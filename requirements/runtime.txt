@@ -1,0 +1,9 @@
+albumentations
+matplotlib
+mmcv
+numpy
+opencv-python
+pillow
+scipy
+timm
+tqdm
