@@ -1,29 +1,33 @@
 import os.path as osp
 from datetime import datetime
-from typing import Union, Callable, Dict
 
-import torch
-import torch.nn as nn
-from torch.optim import Optimizer
+import ignite.distributed as idist
 import mmcv
+from ignite.contrib.handlers import ProgressBar
+from ignite.contrib.metrics import ROC_AUC
+from ignite.engine import Engine, Events
+from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine, param_scheduler
+from ignite.metrics import Accuracy
+from ignite.utils import manual_seed, setup_logger
 from mmcv import Config
 from mmcv.runner import build_optimizer
-from ..datasets import build_dataset
+
 from ..classifiers import build_classifier
+from ..datasets import build_dataset
 from ..losses import build_loss
+from .eval_hooks import MetricsTextLogger
+from .step_fn import get_eval_step_fn, get_train_step_fn
+from .train_hooks import TrainStatsTextLogger
+from .utils import metrics_transform
 
-from ignite.engine import Engine, Events
-from ignite.utils import manual_seed, setup_logger
-import ignite.distributed as idist
 
-
-def train_classifier(local_rank: int, cfg: Config, work_dir) -> None:
+def train_classifier(local_rank: int, cfg: Config) -> None:
     rank = idist.get_rank()
     manual_seed(cfg.get('seed', 2022) + rank)
     device = idist.device()
 
-    logger = setup_logger('imba-explain',
-                          filepath=osp.join(cfg.work_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"))
+    logger = setup_logger(
+        'imba-explain', filepath=osp.join(cfg.work_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"))
     env_info_dict = mmcv.collect_env()
     env_info = '\n'.join([f'{k}: {v}' for k, v in env_info_dict.items()])
     dash_line = '-' * 60 + '\n'
@@ -32,25 +36,70 @@ def train_classifier(local_rank: int, cfg: Config, work_dir) -> None:
 
     train_set = build_dataset(cfg.data['train'])
     val_set = build_dataset(cfg.data['val'])
-    test_set = build_dataset(cfg.data['test'])
 
     train_loader = idist.auto_dataloader(train_set, **cfg.data['data_loader'])
     val_loader = idist.auto_dataloader(val_set, **cfg.data['data_loader'])
-    test_loader = idist.auto_dataloader(test_set, **cfg.data['data_loader'])
     epoch_length = len(train_loader)
 
     classifier = build_classifier(cfg.classifier)
     classifier.to(device)
     classifier = idist.auto_model(classifier, sync_bn=cfg.get('sync_bn', False))
 
+    # build trainer
     optimizer = build_optimizer(classifier, cfg.optimizier)
     criterion = build_loss(cfg.loss)
     criterion.to(device)
     trainer = Engine(get_train_step_fn(classifier, criterion, optimizer, device))
     trainer.logger = logger
 
+    # built evaluator
+    eval_step_fn = get_eval_step_fn(classifier, device)
+    evaluator = Engine(eval_step_fn)
+    evaluator.logger = logger
 
-    
+    # evaluator handlers
+    pbar = ProgressBar(persist=True)
+    pbar.attach(evaluator)
 
+    val_metrics = {
+        'accuracy': Accuracy(output_transform=metrics_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=metrics_transform, device=device, **cfg.class_metrics['roc_auc']),
+    }
+    for name, metric in val_metrics.items():
+        metric.attach(engine=evaluator, name=name)
 
-    
+    metrics_logger = MetricsTextLogger(logger=logger)
+    metrics_logger.attach(evaluator, trainer)
+
+    # trainer handlers
+    def run_validation(engine_train: Engine, engine_val: Engine) -> None:
+        engine_val.run(val_loader)
+
+    trainer.add_event_handler(Events.ITERATION_COMPLETED(every=cfg.val_interval), run_validation, evaluator)
+
+    if cfg.cosine_annealing:
+        cycle_size = cfg.max_epochs * epoch_length
+        lr = cfg.optimizer['lr']
+        lr_scheduler = param_scheduler.CosineAnnealingScheduler(
+            optimizer=optimizer, param_name='lr', start_value=lr, end_value=lr * 0.01, cycle_size=cycle_size)
+        lr_scheduler = param_scheduler.create_lr_scheduler_with_warmup(
+            lr_scheduler, warmup_start_value=0.01 * lr, warmup_duration=1000, warmup_end_value=lr)
+        trainer.add_event_handler(Events.ITERATION_STARTED, lr_scheduler)
+
+    to_save = {'classifier': classifier}
+    save_handler = DiskSaver(osp.join(osp.join(cfg.work_dir, 'ckpts')), require_empty=False)
+    score_fn = Checkpoint.get_default_score_fn('roc_auc')
+    ckpt_handler = Checkpoint(
+        to_save,
+        save_handler,
+        n_saved=cfg.get('n_saved', 1),
+        score_name='roc_auc',
+        score_function=score_fn,
+        global_step_transform=global_step_from_engine(trainer, Events.EPOCH_COMPLETED(every=cfg.checkpoint_interval)),
+        greater_or_equal=True)
+    trainer.add_event_handler(Events.EPOCH_COMPLETED(every=cfg.checkpoint_interval), ckpt_handler)
+
+    train_stats_logger = TrainStatsTextLogger(interval=cfg.log_interval, logger=logger)
+    train_stats_logger.attach(trainer, optimizer)
+
+    trainer.run(data=train_loader, max_epochs=cfg.max_epochs)

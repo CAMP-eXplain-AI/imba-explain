@@ -22,7 +22,7 @@ def fetch_requirements(name):
 
 
 def get_version():
-    init_py_path = osp.join(osp.abspath(osp.dirname(__file__)), 'imba-explain', '__init__.py')
+    init_py_path = osp.join(osp.abspath(osp.dirname(__file__)), 'imba_explain', '__init__.py')
     init_py = open(init_py_path, 'r').readlines()
     version_line = [
         l.strip() for l in init_py  # noqa: E741

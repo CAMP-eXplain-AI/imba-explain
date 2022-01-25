@@ -3,7 +3,9 @@ matplotlib
 mmcv
 numpy
 opencv-python
+pandas
 pillow
+pytorch-ignite
 scipy
 timm
 tqdm

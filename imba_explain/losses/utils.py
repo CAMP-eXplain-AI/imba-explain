@@ -1,13 +1,13 @@
 # Copied from https://github.com/open-mmlab/mmclassification/blob/master/mmcls/models/losses/utils.py
 # Copyright (c) OpenMMLab. All rights reserved.
 import functools
-
 import torch
 import torch.nn.functional as F
 
 
 def reduce_loss(loss, reduction):
     """Reduce loss as specified.
+
     Args:
         loss (Tensor): Elementwise loss tensor.
         reduction (str): Options are "none", "mean" and "sum".
@@ -26,6 +26,7 @@ def reduce_loss(loss, reduction):
 
 def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
     """Apply element-wise weight and reduce loss.
+
     Args:
         loss (Tensor): Element-wise loss.
         weight (Tensor): Element-wise weights.
@@ -78,12 +79,7 @@ def weighted_loss(loss_func):
     """
 
     @functools.wraps(loss_func)
-    def wrapper(pred,
-                target,
-                weight=None,
-                reduction='mean',
-                avg_factor=None,
-                **kwargs):
+    def wrapper(pred, target, weight=None, reduction='mean', avg_factor=None, **kwargs):
         # get element-wise loss
         loss = loss_func(pred, target, **kwargs)
         loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
@@ -93,8 +89,8 @@ def weighted_loss(loss_func):
 
 
 def convert_to_one_hot(targets: torch.Tensor, classes) -> torch.Tensor:
-    """This function converts target class indices to one-hot vectors, given
-    the number of classes.
+    """This function converts target class indices to one-hot vectors, given the number of classes.
+
     Args:
         targets (Tensor): The ground truth label of the prediction
                 with shape (N, 1)
@@ -102,10 +98,7 @@ def convert_to_one_hot(targets: torch.Tensor, classes) -> torch.Tensor:
     Returns:
         Tensor: Processed loss values.
     """
-    assert (torch.max(targets).item() <
-            classes), 'Class Index must be less than number of classes'
-    one_hot_targets = torch.zeros((targets.shape[0], classes),
-                                  dtype=torch.long,
-                                  device=targets.device)
+    assert (torch.max(targets).item() < classes), 'Class Index must be less than number of classes'
+    one_hot_targets = torch.zeros((targets.shape[0], classes), dtype=torch.long, device=targets.device)
     one_hot_targets.scatter_(1, targets.long(), 1)
     return one_hot_targets

@@ -1,7 +1,7 @@
-from mmcv import Registry
 from typing import Dict, Optional
-import torch.nn as nn
 
+import torch.nn as nn
+from mmcv import Registry
 
 LOSSES = Registry('losses')
 

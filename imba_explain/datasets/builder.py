@@ -1,6 +1,6 @@
-from mmcv import Registry
 from typing import Dict, Optional
 
+from mmcv import Registry
 
 DATASETS = Registry('datasets')
 
