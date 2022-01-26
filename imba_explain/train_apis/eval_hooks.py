@@ -16,14 +16,17 @@ class MetricsTextLogger:
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self.logger = logger if logger is not None else setup_logger('imba-explain')
 
-    def _log_metrics(self, evaluator: Engine, trainer: Engine) -> None:
-        epoch = trainer.state.epoch
-        max_epochs = trainer.state.max_epochs
-        log_str = f'Epoch [{epoch}/{max_epochs}]: '
+    def _log_metrics(self, evaluator: Engine, trainer: Optional[Engine] = None) -> None:
+        if trainer is not None:
+            epoch = trainer.state.epoch
+            max_epochs = trainer.state.max_epochs
+            log_str = f'Epoch [{epoch}/{max_epochs}]: '
+        else:
+            log_str = 'Evaluation metrics: '
         log_str += '; '.join([f'{name}: {val:.4f}' for name, val in evaluator.state.metrics])
         self.logger.info(log_str)
 
-    def attach(self, evaluator: Engine, trainer: Engine) -> None:
+    def attach(self, evaluator: Engine, trainer: Optional[Engine] = None) -> None:
         evaluator.add_event_handler(Events.EPOCH_COMPLETED, self._log_metrics, trainer)
 
 
