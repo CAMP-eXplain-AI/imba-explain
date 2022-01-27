@@ -12,7 +12,7 @@ train_pipeline = [
     dict(type='ShiftScaleRotate', p=0.5),
     dict(type='RandomBrightnessContrast', brightness_limit=0.1, contrast_limit=0.1, p=0.5),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='CoarseDropout', max_height=20, max_width=20, min_holes=0),
+    dict(type='CoarseDropout', max_height=20, max_width=20, min_holes=2, p=0.5),
     dict(type='ToTensorV2')
 ]
 
@@ -24,19 +24,6 @@ test_pipeline = [
 
 data = dict(
     data_loader=dict(batch_size=128, shuffle=True, num_workers=8),
-    train=dict(
-        type=data_type,
-        img_root=data_root + 'train/',
-        label_csv=label_csv,
-        pipeline=train_pipeline),
-    val=dict(
-        type=data_type,
-        img_root=data_root + 'val/',
-        label_csv=label_csv,
-        pipeline=test_pipeline),
-    test=dict(
-        type=data_type,
-        img_root=data_root + 'test/',
-        label_csv=label_csv,
-        pipeline=test_pipeline)
-)
+    train=dict(type=data_type, img_root=data_root + 'train/', label_csv=label_csv, pipeline=train_pipeline),
+    val=dict(type=data_type, img_root=data_root + 'val/', label_csv=label_csv, pipeline=test_pipeline),
+    test=dict(type=data_type, img_root=data_root + 'test/', label_csv=label_csv, pipeline=test_pipeline))

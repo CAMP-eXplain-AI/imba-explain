@@ -1,6 +1,6 @@
 import os.path as osp
-from typing import Union
 from copy import deepcopy
+from typing import Union
 
 import ignite.distributed as idist
 import mmcv
