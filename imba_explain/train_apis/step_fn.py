@@ -11,10 +11,10 @@ def get_train_step_fn(classifier: nn.Module, criterion: nn.Module, optimizer: Op
 
     def _train_step_fn(engine: Engine, batch: Dict) -> float:
         classifier.train()
-        imgs = batch['imgs'].to(device)
-        targets = batch['targets'].to(device)
-        preds = classifier(imgs)
-        loss = criterion(preds, targets)
+        img = batch['img'].to(device)
+        target = batch['target'].to(device)
+        pred = classifier(img)
+        loss = criterion(pred, target)
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -28,13 +28,13 @@ def get_eval_step_fn(classifier: nn.Module, device: Union[str, torch.device]):
     def _eval_step_fn(engine: Engine, batch: Dict) -> Dict:
         classifier.eval()
         with torch.no_grad():
-            imgs = batch.pop('imgs')
-            targets = batch.pop('targets')
-            imgs = imgs.to(device)
-            targets = targets.to(device)
-            preds = classifier(imgs)
+            img = batch.pop('img')
+            target = batch.pop('target')
+            img = img.to(device)
+            target = target.to(device)
+            pred = classifier(img)
 
-            batch.update({'preds': preds, 'targets': targets})
+            batch.update({'pred': pred, 'target': target})
             return batch
 
     return _eval_step_fn

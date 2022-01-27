@@ -1,5 +1,6 @@
 import os.path as osp
 from typing import Union
+from copy import deepcopy
 
 import ignite.distributed as idist
 import mmcv
@@ -30,7 +31,9 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     logger = setup_logger('imba-explain')
 
     test_set = build_dataset(cfg.data['test'])
-    test_loader = idist.auto_dataloader(test_set, **cfg.data['data_loader'])
+    data_loader_cfg = deepcopy(cfg.data['data_loader'])
+    data_loader_cfg.update({'shuffle': False})
+    test_loader = idist.auto_dataloader(test_set, **data_loader_cfg)
 
     state_dict = torch.load(ckpt, map_location='cpu')
     logger.info(f'Using the checkpoint: {ckpt}')

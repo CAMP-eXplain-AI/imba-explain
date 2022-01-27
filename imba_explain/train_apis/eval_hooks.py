@@ -10,6 +10,8 @@ import torch
 from ignite.engine import Engine, Events
 from ignite.utils import setup_logger
 
+from ..datasets.nih_dataset import nih_cls_name_to_ind
+
 
 class MetricsTextLogger:
 
@@ -65,7 +67,16 @@ class PredictionsSaver:
                     raise TypeError(f'Invalid type of data stored in the buffer: {value.__class__.__name__}.')
                 self.buffers.update({key: value})
 
-        df = pd.DataFrame.from_dict(self.buffers)
+        pred = self.buffers['pred']
+        target = self.buffers['target']
+        img_files = self.buffers['img_file']
+        df = pd.DataFrame(img_files, columns=['Image Index'])
+        df[['p-' + x for x in nih_cls_name_to_ind.keys()]] = pred
+        df[['t-' + x for x in nih_cls_name_to_ind.keys()]] = target
+        for k, v in self.buffers.items():
+            if k not in ['pred', 'target', 'img_file']:
+                df[k] = v
+
         df.to_csv(self.file_path)
         self.logger.info(f'Predictions have been saved to {self.file_path}.')
         self._has_saved = True

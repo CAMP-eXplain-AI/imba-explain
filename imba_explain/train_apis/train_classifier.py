@@ -1,4 +1,5 @@
 import os.path as osp
+from copy import deepcopy
 from datetime import datetime
 
 import ignite.distributed as idist
@@ -37,8 +38,10 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     train_set = build_dataset(cfg.data['train'])
     val_set = build_dataset(cfg.data['val'])
 
-    train_loader = idist.auto_dataloader(train_set, **cfg.data['data_loader'])
-    val_loader = idist.auto_dataloader(val_set, **cfg.data['data_loader'])
+    data_loader_cfg = deepcopy(cfg.data['data_loader'])
+    train_loader = idist.auto_dataloader(train_set, **data_loader_cfg)
+    data_loader_cfg.update({'shuffle': False})
+    val_loader = idist.auto_dataloader(val_set, **data_loader_cfg)
     epoch_length = len(train_loader)
 
     classifier = build_classifier(cfg.classifier)
