@@ -38,7 +38,7 @@ class PredictionsSaver:
         if idist.get_world_size() > 1:
             raise RuntimeError(f'PredictionSaver only support the non-distributed setting, '
                                f'but the world size is {idist.get_world_size()}.')
-        if file_path.endswith('.csv'):
+        if not file_path.endswith('.csv'):
             raise ValueError(f"file path must be a string ending with '.csv', but got {file_path}.")
 
         self.file_path = file_path
@@ -53,6 +53,8 @@ class PredictionsSaver:
         output = engine.state.output
         for key, value in output.items():
             if isinstance(value, torch.Tensor):
+                if key == 'pred':
+                    value = value.sigmoid()
                 value = value.detach().cpu().numpy()
             self.buffers[key].append(value)
 
