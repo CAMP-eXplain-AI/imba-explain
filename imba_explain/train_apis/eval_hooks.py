@@ -25,7 +25,7 @@ class MetricsTextLogger:
             log_str = f'Epoch [{epoch}/{max_epochs}]: '
         else:
             log_str = 'Evaluation metrics: '
-        log_str += '; '.join([f'{name}: {val:.4f}' for name, val in evaluator.state.metrics])
+        log_str += '; '.join([f'{name}: {val:.4f}' for name, val in evaluator.state.metrics.items()])
         self.logger.info(log_str)
 
     def attach(self, evaluator: Engine, trainer: Optional[Engine] = None) -> None:

@@ -19,7 +19,7 @@ from ..losses import build_loss
 from .eval_hooks import MetricsTextLogger
 from .step_fn import get_eval_step_fn, get_train_step_fn
 from .train_hooks import TrainStatsTextLogger
-from .utils import metrics_transform
+from .utils import acc_metric_transform, roc_auc_metric_transform
 
 
 def train_classifier(local_rank: int, cfg: Config) -> None:
@@ -37,6 +37,7 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
 
     train_set = build_dataset(cfg.data['train'])
     val_set = build_dataset(cfg.data['val'])
+    logger.info(f'Training set size: {len(train_set)} samples. Validation set size: {len(val_set)} samples.')
 
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     train_loader = idist.auto_dataloader(train_set, **data_loader_cfg)
@@ -49,7 +50,7 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     classifier = idist.auto_model(classifier, sync_bn=cfg.get('sync_bn', False))
 
     # build trainer
-    optimizer = build_optimizer(classifier, cfg.optimizier)
+    optimizer = build_optimizer(classifier, cfg.optimizer)
     criterion = build_loss(cfg.loss)
     criterion.to(device)
     trainer = Engine(get_train_step_fn(classifier, criterion, optimizer, device))
@@ -65,8 +66,8 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     pbar.attach(evaluator)
 
     val_metrics = {
-        'accuracy': Accuracy(output_transform=metrics_transform, device=device, **cfg.class_metrics['accuracy']),
-        'roc_auc': ROC_AUC(output_transform=metrics_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'accuracy': Accuracy(output_transform=acc_metric_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=roc_auc_metric_transform, device=device, **cfg.class_metrics['roc_auc']),
     }
     for name, metric in val_metrics.items():
         metric.attach(engine=evaluator, name=name)
@@ -78,7 +79,7 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     def run_validation(engine_train: Engine, engine_val: Engine) -> None:
         engine_val.run(val_loader)
 
-    trainer.add_event_handler(Events.ITERATION_COMPLETED(every=cfg.val_interval), run_validation, evaluator)
+    trainer.add_event_handler(Events.EPOCH_COMPLETED(every=cfg.val_interval), run_validation, evaluator)
 
     if cfg.cosine_annealing:
         cycle_size = cfg.max_epochs * epoch_length
@@ -98,9 +99,9 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
         n_saved=cfg.get('n_saved', 1),
         score_name='roc_auc',
         score_function=score_fn,
-        global_step_transform=global_step_from_engine(trainer, Events.EPOCH_COMPLETED(every=cfg.checkpoint_interval)),
+        global_step_transform=global_step_from_engine(trainer, Events.EPOCH_COMPLETED),
         greater_or_equal=True)
-    trainer.add_event_handler(Events.EPOCH_COMPLETED(every=cfg.checkpoint_interval), ckpt_handler)
+    evaluator.add_event_handler(Events.COMPLETED, ckpt_handler)
 
     train_stats_logger = TrainStatsTextLogger(interval=cfg.log_interval, logger=logger)
     train_stats_logger.attach(trainer, optimizer)

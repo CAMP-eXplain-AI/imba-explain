@@ -18,10 +18,11 @@ class TrainStatsTextLogger:
     def _log_stats(self, engine: Engine, optimizer: Optimizer) -> None:
         loss = engine.state.output
         iter_time = self.timer.value()
-        remain_iters = max(0, engine.state.max_iters - engine.state.iteration)
+        max_iters = engine.state.max_epochs * engine.state.epoch_length
+        remain_iters = max(0, max_iters - engine.state.iteration)
         eta_str = str(timedelta(seconds=int(remain_iters * iter_time)))
 
-        log_str = f'Epoch [{engine.state.epoch}/ {engine.state.max_epochs}] '
+        log_str = f'Epoch [{engine.state.epoch}/{engine.state.max_epochs}] '
         iter_in_epoch = engine.state.iteration % engine.state.epoch_length
         # replace [0/epoch_length] with [epoch_length/epoch_length]
         iter_in_epoch = iter_in_epoch if iter_in_epoch != 0 else engine.state.epoch_length

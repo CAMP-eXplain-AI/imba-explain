@@ -13,7 +13,7 @@ def parser_args():
     parser.add_argument('config', help='Path to the config file.')
     parser.add_argument('--work-dir', default='workdirs', help='Working directory to store the output files.')
     parser.add_argument('--seed', type=int, help='Random seed.')
-    parser.add_argument('--sync-bn', type=bool, action='store_true', help='Synchronized BatchNorm.')
+    parser.add_argument('--sync-bn', action='store_true', help='Synchronized BatchNorm.')
     parser.add_argument('--backend', help='Distributed backend.')
     parser.add_argument('--nproc_per_node', type=int, help='Number of processes per node.')
     parser.add_argument('--nnodes', type=int, help='Number of nodes.')

@@ -23,7 +23,7 @@ test_pipeline = [
 ]
 
 data = dict(
-    data_loader=dict(batch_size=128, shuffle=True, num_workers=8),
+    data_loader=dict(batch_size=512, shuffle=True, num_workers=16, pin_memory=False),
     train=dict(type=data_type, img_root=data_root + 'train/', label_csv=label_csv, pipeline=train_pipeline),
     val=dict(type=data_type, img_root=data_root + 'val/', label_csv=label_csv, pipeline=test_pipeline),
     test=dict(type=data_type, img_root=data_root + 'test/', label_csv=label_csv, pipeline=test_pipeline))
