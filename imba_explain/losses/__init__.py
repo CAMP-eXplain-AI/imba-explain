@@ -1,5 +1,10 @@
-from .asymmetric_loss import AsymmetricLoss
+from .asymmetric import AsymmetricLoss
 from .builder import LOSSES, build_loss
-from .cross_entropy_loss import CrossEntropyLoss
+from .class_balanced import ClassBalancedLoss
+from .cross_entropy import CrossEntropyLoss
+from .focal import FocalLoss
+from .multi_task import MultiTaskLoss
 
-__all__ = ['AsymmetricLoss', 'CrossEntropyLoss', 'LOSSES', 'build_loss']
+__all__ = [
+    'AsymmetricLoss', 'CrossEntropyLoss', 'ClassBalancedLoss', 'FocalLoss', 'LOSSES', 'MultiTaskLoss', 'build_loss'
+]

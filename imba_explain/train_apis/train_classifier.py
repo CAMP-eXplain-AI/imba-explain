@@ -52,7 +52,22 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     # build trainer
     optimizer = build_optimizer(classifier, cfg.optimizer)
     criterion = build_loss(cfg.loss)
+    # set number of positive and negative samples for the loss function
+    if hasattr(criterion, 'set_num_pos_neg'):
+        criterion.set_num_pos_neg()
     criterion.to(device)
+    # in case where loss function contains learnable parameters, use DDP
+    criterion = idist.auto_model(criterion)
+
+    # when the loss function has learnable parameters, add them to the optimizer's parameter group
+    try:
+        has_parameter = next(criterion.parameters()) is not None
+    except StopIteration:
+        has_parameter = False
+
+    if has_parameter:
+        optimizer.add_param_group({'params': criterion.parameters()})
+    optimizer = idist.auto_optim(optimizer)
     trainer = Engine(get_train_step_fn(classifier, criterion, optimizer, device))
     trainer.logger = logger
 

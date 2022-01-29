@@ -5,6 +5,7 @@ from typing import Dict, List, Union
 import cv2
 import pandas as pd
 import torch
+from ignite.utils import setup_logger
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -42,10 +43,40 @@ class NIHClassificationDataset(Dataset):
         self.img_files = os.listdir(self.img_root)
         label_df = pd.read_csv(self.label_csv)
         label_df.set_index('Image Index', inplace=True)
-        # img_file to label. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
-        self.img_to_label = {x: label_df.loc[x, 'Finding Labels'].split('|') for x in self.img_files}
+        # img_file to disease anmes. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
+        self.img_to_diseases = {}
+        self.num_pos_neg = torch.zeros((2, self.num_classes), dtype=torch.long)
+        for img_file in self.img_files:
+            diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
+            self.img_to_diseases.update({img_file: diseases})
+            self.num_pos_neg[0] += self.one_hot_encode(diseases, dtype=torch.long)
+        self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
+
+        logger = setup_logger('imba-explain')
+        log_nums = self.num_pos_neg.numpy()
+        logger.info(f'Dataset under {self.img_root}: \nNumber of positive samples: {log_nums[0]};\n'
+                    f'Number of negative samples {log_nums[1]}.')
 
         self.pipeline = build_pipeline(pipeline)
+
+    def get_num_pos_neg(self) -> torch.Tensor:
+        return self.num_pos_neg
+
+    def one_hot_encode(self, diseases: List[str], dtype: torch.dtype = torch.float32) -> torch.Tensor:
+        """
+
+        Args:
+            diseases: Disease names of an image sample.
+            dtype: Data type of output Tensor.
+
+        Returns:
+            one-hot encoded label. Note that there can be multiple ones in the tensor, although the tensor is named
+            "one-hot" label.
+        """
+        label = torch.LongTensor([nih_cls_name_to_ind[disease_name] for disease_name in diseases])
+        one_hot_label = torch.zeros(self.num_classes, dtype=dtype)
+        one_hot_label.scatter_(0, label, 1)
+        return one_hot_label
 
     def __len__(self) -> int:
         return len(self.img_files)
@@ -56,10 +87,8 @@ class NIHClassificationDataset(Dataset):
         img = self.pipeline(image=img)['image']
         result = {'img': img, 'img_file': img_file}
 
-        label = self.img_to_label[img_file]
-        label = torch.LongTensor([nih_cls_name_to_ind[disease_name] for disease_name in label])
-        one_hot_label = torch.zeros(self.num_classes, dtype=torch.float32)
-        one_hot_label.scatter_(0, label, 1.0)
+        diseases = self.img_to_diseases[img_file]
+        one_hot_label = self.one_hot_encode(diseases)
         result.update({'target': one_hot_label})
 
         return result
