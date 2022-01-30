@@ -36,9 +36,7 @@ def multi_class_loss(pred: Tensor,
             weight = weight.reshape(-1, 1)
 
     loss = weight_reduce_loss(loss, weight=weight, reduction=reduction, avg_factor=avg_factor)
-
-    if reduction in ('mean', 'sum'):
-        loss += 0.5 * torch.sum(log_variance)
+    loss += 0.5 * torch.sum(log_variance)
     return loss
 
 

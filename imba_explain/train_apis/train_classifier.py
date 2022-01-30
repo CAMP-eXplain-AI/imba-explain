@@ -5,7 +5,7 @@ from datetime import datetime
 import ignite.distributed as idist
 import mmcv
 from ignite.contrib.handlers import ProgressBar
-from ignite.contrib.metrics import ROC_AUC
+from ignite.contrib.metrics import ROC_AUC, AveragePrecision
 from ignite.engine import Engine, Events
 from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine, param_scheduler
 from ignite.metrics import Accuracy
@@ -19,7 +19,7 @@ from ..losses import build_loss
 from .eval_hooks import MetricsTextLogger
 from .step_fn import get_eval_step_fn, get_train_step_fn
 from .train_hooks import TrainStatsTextLogger
-from .utils import acc_metric_transform, roc_auc_metric_transform
+from .utils import logits_transform, prob_transform
 
 
 def train_classifier(local_rank: int, cfg: Config) -> None:
@@ -81,8 +81,9 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     pbar.attach(evaluator)
 
     val_metrics = {
-        'accuracy': Accuracy(output_transform=acc_metric_transform, device=device, **cfg.class_metrics['accuracy']),
-        'roc_auc': ROC_AUC(output_transform=roc_auc_metric_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'accuracy': Accuracy(output_transform=prob_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=logits_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'ap': AveragePrecision(output_transform=logits_transform, device=device, **cfg.class_metrics['ap'])
     }
     for name, metric in val_metrics.items():
         metric.attach(engine=evaluator, name=name)

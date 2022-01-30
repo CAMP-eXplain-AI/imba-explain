@@ -6,7 +6,7 @@ import ignite.distributed as idist
 import mmcv
 import torch
 from ignite.contrib.handlers import ProgressBar
-from ignite.contrib.metrics import ROC_AUC
+from ignite.contrib.metrics import ROC_AUC, AveragePrecision
 from ignite.engine import Engine
 from ignite.metrics import Accuracy
 from ignite.utils import manual_seed, setup_logger
@@ -14,8 +14,7 @@ from mmcv import Config
 
 from ..classifiers import build_classifier
 from ..datasets import build_dataset
-from ..train_apis import (MetricsTextLogger, PredictionsSaver, acc_metric_transform, get_eval_step_fn,
-                          roc_auc_metric_transform)
+from ..train_apis import MetricsTextLogger, PredictionsSaver, get_eval_step_fn, logits_transform, prob_transform
 
 
 def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = 'cuda:0') -> None:
@@ -51,8 +50,9 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     pbar.attach(evaluator)
 
     test_metrics = {
-        'accuracy': Accuracy(output_transform=acc_metric_transform, device=device, **cfg.class_metrics['accuracy']),
-        'roc_auc': ROC_AUC(output_transform=roc_auc_metric_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'accuracy': Accuracy(output_transform=prob_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=logits_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'ap': AveragePrecision(output_transform=logits_transform, device=device, **cfg.class_metrics['ap'])
     }
     for name, metric in test_metrics.items():
         metric.attach(engine=evaluator, name=name)
