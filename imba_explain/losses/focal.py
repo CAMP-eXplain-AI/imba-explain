@@ -1,30 +1,40 @@
 # Copied from https://github.com/open-mmlab/mmclassification/blob/master/mmcls/models/losses/focal_loss.py
 # Copyright (c) OpenMMLab. All rights reserved.
+from typing import Optional, Union
+
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 from .builder import LOSSES
 from .utils import convert_to_one_hot, weight_reduce_loss
 
 
-def sigmoid_focal_loss(pred, target, weight=None, gamma=2.0, alpha=0.25, reduction='mean', avg_factor=None):
+def sigmoid_focal_loss(pred: Tensor,
+                       target: Tensor,
+                       weight: Optional[Tensor] = None,
+                       gamma: float = 2.0,
+                       alpha: Union[float, Tensor] = 0.25,
+                       reduction: str = 'mean',
+                       avg_factor: Optional[float] = None) -> Tensor:
     r"""Sigmoid focal loss.
     Args:
-        pred (torch.Tensor): The prediction with shape (N, \*).
-        target (torch.Tensor): The ground truth label of the prediction with
+        pred: The prediction with shape (N, \*).
+        target: The ground truth label of the prediction with
             shape (N, \*).
-        weight (torch.Tensor, optional): Sample-wise loss weight with shape
+        weight: Sample-wise loss weight with shape
             (N, ). Defaults to None.
-        gamma (float): The gamma for calculating the modulating factor.
+        gamma: The gamma for calculating the modulating factor.
             Defaults to 2.0.
-        alpha (float): A balanced form for Focal Loss. Defaults to 0.25.
-        reduction (str): The method used to reduce the loss.
+        alpha: A balanced form for Focal Loss. If it is a float, then a global balanced form is applied.
+            If it is Tensor with shape (N, \*) or any shape that are broadcast-compatible with `pred`.
+        reduction: The method used to reduce the loss.
             Options are "none", "mean" and "sum". If reduction is 'none' ,
             loss is same shape as pred and label. Defaults to 'mean'.
-        avg_factor (int, optional): Average factor that is used to average
+        avg_factor: Average factor that is used to average
             the loss. Defaults to None.
     Returns:
-        torch.Tensor: Loss.
+        Loss.
     """
     assert pred.shape == \
         target.shape, 'pred and target should be in the same shape.'

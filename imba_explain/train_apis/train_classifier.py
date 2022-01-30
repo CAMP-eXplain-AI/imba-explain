@@ -52,9 +52,9 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     # build trainer
     optimizer = build_optimizer(classifier, cfg.optimizer)
     criterion = build_loss(cfg.loss)
-    # set number of positive and negative samples for the loss function
-    if hasattr(criterion, 'set_num_pos_neg'):
-        criterion.set_num_pos_neg()
+    # let the loss function receive the data distribution information
+    if hasattr(criterion, 'receive_data_dist_info'):
+        criterion.receive_data_dist_info()
     criterion.to(device)
 
     try:
