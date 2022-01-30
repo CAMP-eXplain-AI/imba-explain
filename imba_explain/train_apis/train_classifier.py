@@ -54,7 +54,7 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     criterion = build_loss(cfg.loss)
     # let the loss function receive the data distribution information
     if hasattr(criterion, 'receive_data_dist_info'):
-        criterion.receive_data_dist_info()
+        criterion.receive_data_dist_info(train_set.get_num_pos_neg())
     criterion.to(device)
 
     try:
