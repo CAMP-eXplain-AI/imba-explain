@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as ET
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
+import torch
 
 
 def load_bbox_annot(xml_file: str,
@@ -41,3 +42,12 @@ def load_bbox_annot(xml_file: str,
         labels = np.asarray(labels, dtype=int)
 
     return bboxes, labels
+
+
+def bbox_collate_fn(batch: List[Dict]) -> Dict:
+    img_batch = torch.stack([sample['img'] for sample in batch], 0)
+    bboxes_batch = [sample['bboxes'] for sample in batch]
+    labels_batch = [sample['labels'] for sample in batch]
+    img_file_batch = [sample['img_file'] for sample in batch]
+    result = {'img': img_batch, 'img_file': img_file_batch, 'bboxes': bboxes_batch, 'labels': labels_batch}
+    return result

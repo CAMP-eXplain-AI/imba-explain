@@ -4,14 +4,15 @@ from typing import Dict, List, Union
 
 import albumentations as A
 import cv2
+import numpy as np
 import pandas as pd
 import torch
 from ignite.utils import setup_logger
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from ..explain_apis import load_bbox_annot
 from .builder import DATASETS, build_pipeline
+from .utils import load_bbox_annot
 
 nih_cls_name_to_ind = {
     'Atelectasis': 0,
@@ -23,6 +24,25 @@ nih_cls_name_to_ind = {
     'Fibrosis': 6,
     'Hernia': 7,
     'Infiltration': 8,
+    'Mass': 9,
+    'No Finding': 10,
+    'Nodule': 11,
+    'Pleural_Thickening': 12,
+    'Pneumonia': 13,
+    'Pneumothorax': 14
+}
+
+# in xml files: infiltration is named as infiltrate
+nih_bbox_name_to_ind = {
+    'Atelectasis': 0,
+    'Cardiomegaly': 1,
+    'Consolidation': 2,
+    'Edema': 3,
+    'Effusion': 4,
+    'Emphysema': 5,
+    'Fibrosis': 6,
+    'Hernia': 7,
+    'Infiltrate': 8,
     'Mass': 9,
     'No Finding': 10,
     'Nodule': 11,
@@ -109,7 +129,7 @@ class NIHDetectionDataset(Dataset):
 
         self.xml_files = os.listdir(self.annot_root)
 
-        self.inds_to_names = {v: k for k, v in nih_cls_name_to_ind.items()}
+        self.inds_to_names = {v: k for k, v in nih_bbox_name_to_ind.items()}
 
     def get_inds_to_names(self) -> Dict[int, str]:
         return self.inds_to_names
@@ -122,9 +142,9 @@ class NIHDetectionDataset(Dataset):
         xml_file = self.xml_files[idx]
         img_path = osp.join(self.img_root, osp.splitext(xml_file)[0] + '.png')
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
-        bboxes, labels = load_bbox_annot(osp.join(self.annot_root, xml_file), nih_cls_name_to_ind, dtype='float')
+        bboxes, labels = load_bbox_annot(osp.join(self.annot_root, xml_file), nih_bbox_name_to_ind, dtype='float')
         transformed = self.pipeline(image=img, bboxes=bboxes, labels=labels)
         img = transformed['image']
-        bboxes = transformed['bboxes'].astype(int)
-        labels = transformed['labels']
+        bboxes = np.asarray(transformed['bboxes'], dtype=int)
+        labels = np.asarray(transformed['labels'], dtype=int)
         return {'img_file': osp.basename(img_path), 'img': img, 'bboxes': bboxes, 'labels': labels}
