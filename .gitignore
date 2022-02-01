@@ -1,6 +1,7 @@
 data
 workdirs/
 pretrained
+.DS_Store
 
 .idea
 .vscode

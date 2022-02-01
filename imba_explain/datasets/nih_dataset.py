@@ -2,6 +2,7 @@ import os
 import os.path as osp
 from typing import Dict, List, Union
 
+import albumentations as A
 import cv2
 import pandas as pd
 import torch
@@ -9,6 +10,7 @@ from ignite.utils import setup_logger
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from ..explain_apis import load_bbox_annot
 from .builder import DATASETS, build_pipeline
 
 nih_cls_name_to_ind = {
@@ -92,3 +94,37 @@ class NIHClassificationDataset(Dataset):
         result.update({'target': one_hot_label})
 
         return result
+
+
+@DATASETS.register_module()
+class NIHDetectionDataset(Dataset):
+
+    def __init__(self, img_root: str, annot_root: str, pipeline: List[Dict]) -> None:
+        super(NIHDetectionDataset, self).__init__()
+        self.img_root = img_root
+        self.annot_root = annot_root
+
+        default_args = {'bbox_params': A.BboxParams(format='pascal_voc', label_fields=['labels'])}
+        self.pipeline = build_pipeline(pipeline, default_args=default_args)
+
+        self.xml_files = os.listdir(self.annot_root)
+
+        self.inds_to_names = {v: k for k, v in nih_cls_name_to_ind.items()}
+
+    def get_inds_to_names(self) -> Dict[int, str]:
+        return self.inds_to_names
+
+    def __len__(self) -> int:
+        return len(self.xml_files)
+
+    def __getitem__(self, idx: int) -> Dict:
+        # base xml file name, e.g., xxxx_xxxx.xml
+        xml_file = self.xml_files[idx]
+        img_path = osp.join(self.img_root, osp.splitext(xml_file)[0] + '.png')
+        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+        bboxes, labels = load_bbox_annot(osp.join(self.annot_root, xml_file), nih_cls_name_to_ind, dtype='float')
+        transformed = self.pipeline(image=img, bboxes=bboxes, labels=labels)
+        img = transformed['image']
+        bboxes = transformed['bboxes'].astype(int)
+        labels = transformed['labels']
+        return {'img_file': osp.basename(img_path), 'img': img, 'bboxes': bboxes, 'labels': labels}
