@@ -36,8 +36,9 @@ class WeightedBCEWithLogits(nn.Module):
         else:
             class_weight = None
 
+        # one-hot encoded label: (num_samples, num_classes)
         num_samples = label.shape[0]
-        num_pos = label.sum(1)
+        num_pos = label.sum(0)
         num_neg = num_samples - num_pos
         pos_weight = num_neg / num_pos
         kwargs.update({'pos_weight': pos_weight})
