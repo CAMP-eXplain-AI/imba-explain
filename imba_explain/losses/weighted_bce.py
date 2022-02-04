@@ -21,6 +21,27 @@ class WeightedBCEWithLogits(nn.Module):
         self.loss_weight = loss_weight
         self.class_weight = class_weight
 
+    @staticmethod
+    def compute_pos_weight(label: torch.Tensor) -> torch.Tensor:
+        """For each class, if the batch consists of all negative/positive samples, set the pos_weight to 1, otherwise
+        num_neg / num_pos."""
+        # one-hot encoded label: (num_samples, num_classes)
+        num_samples = label.shape[0]
+        num_pos = label.sum(0)
+        num_neg: torch.Tensor = num_samples - num_pos
+
+        # binary mask
+        # 1 means set pos_weight of the class to num_neg / num_pos
+        # 0 means set pos_weight of the class to 1
+        mask = torch.logical_and(num_neg != 0, num_pos != 0).to(label)
+        print(mask)
+        pos_weight = num_neg / (num_pos + 1e-6)
+
+        ones = torch.ones_like(pos_weight)
+        pos_weight = pos_weight * mask + ones * (1 - mask)
+
+        return pos_weight
+
     def forward(self,
                 cls_score: Tensor,
                 label: Tensor,
@@ -36,11 +57,7 @@ class WeightedBCEWithLogits(nn.Module):
         else:
             class_weight = None
 
-        # one-hot encoded label: (num_samples, num_classes)
-        num_samples = label.shape[0]
-        num_pos = label.sum(0)
-        num_neg = num_samples - num_pos
-        pos_weight = num_neg / num_pos
+        pos_weight = self.compute_pos_weight(label)
         kwargs.update({'pos_weight': pos_weight})
 
         loss_cls = self.loss_weight * binary_cross_entropy(
