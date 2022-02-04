@@ -3,4 +3,4 @@ _base_ = [
     '../_base_/classifiers/truncated_densenet.py'
 ]
 
-target_layer = 'features.6'
+target_layer = 'features.norm5'
