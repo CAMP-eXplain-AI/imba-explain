@@ -34,7 +34,6 @@ class WeightedBCEWithLogits(nn.Module):
         # 1 means set pos_weight of the class to num_neg / num_pos
         # 0 means set pos_weight of the class to 1
         mask = torch.logical_and(num_neg != 0, num_pos != 0).to(label)
-        print(mask)
         pos_weight = num_neg / (num_pos + 1e-6)
 
         ones = torch.ones_like(pos_weight)
