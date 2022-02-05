@@ -69,6 +69,8 @@ def show_grad_cam(cfg: Config,
                     raise ValueError(f'Attribution map has incorrect shape: {attr_map.shape}. '
                                      f'A valid shape should be (1, 1, height, width).')
                 attr_map = attr_map.squeeze(0).squeeze(0).detach().cpu().numpy()
+                # scale intensity
+                attr_map = attr_map * cfg.get('attr_scale', 1)
                 # clip the attribution map to [0, 1]
                 attr_map = np.clip(attr_map, a_min=0, a_max=1)
                 attr_map = (attr_map * 255).astype(np.uint8)
