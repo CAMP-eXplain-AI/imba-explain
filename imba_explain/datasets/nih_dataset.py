@@ -80,7 +80,7 @@ class NIHClassificationDataset(Dataset):
         disease_names = [item[0] for item in sorted(nih_cls_name_to_ind.items(), key=lambda x: x[1])]
         tabular_data = {'Name': disease_names, 'Positive Number': log_nums[0], 'Negative Number': log_nums[1]}
         log_table = tabulate(tabular_data, headers='keys', tablefmt='github')
-        log_str = f'Dataset under {self.img_root}.\n'
+        log_str = f'Statistics of dataset under {self.img_root}\n'
         log_str += 'Numbers of positive/negative samples w.r.t. each class:\n'
         log_str += f'{log_table}'
         logger.info(log_str)

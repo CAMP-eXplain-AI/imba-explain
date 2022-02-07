@@ -77,4 +77,4 @@ class MinMaxNormalizer(BaseNormalizer):
     def normalize(self, attr_map: np.ndarray, *args, **kwargs) -> np.ndarray:
         min_val = np.min(attr_map)
         max_val = np.max(attr_map)
-        return (attr_map - min_val) / (max_val - min_val)
+        return (attr_map - min_val) / (max_val - min_val + 1e-8)
