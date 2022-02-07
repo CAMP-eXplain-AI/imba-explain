@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Union
 
 import cv2
+import mmcv
 import numpy as np
 import torch
 from captum.attr import LayerGradCam
@@ -20,6 +21,7 @@ from .bbox_visualizer import add_multiple_labels, draw_multiple_rectangles
 def show_grad_cam(cfg: Config,
                   ckpt: str,
                   plot_bboxes: bool = True,
+                  single_folder: bool = True,
                   device: Union[str, torch.device] = 'cuda:0',
                   with_pbar: bool = True) -> None:
     manual_seed(cfg.get('seed', 2022))
@@ -27,8 +29,11 @@ def show_grad_cam(cfg: Config,
 
     explain_set = build_dataset(cfg.data['explain'])
     logger.info(f'Dataset under: {explain_set.img_root} contains {len(explain_set)} images')
-    # a dict that maps label indices to bbox names
+    # a dict that maps label indices to bbox label names
     inds_to_names = explain_set.get_inds_to_names()
+    if not single_folder:
+        for name in inds_to_names.values():
+            mmcv.mkdir_or_exist(osp.join(cfg.work_dir, name))
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False, 'drop_last': False})
     logger.info(f'Dataloader config: {data_loader_cfg}')
@@ -87,7 +92,8 @@ def show_grad_cam(cfg: Config,
 
                 img_name = osp.splitext(osp.basename(img_file))[0]
                 suffix = '' if i == 0 else f'-{i + 1}'
-                out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.jpg')
+                out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.jpg') if single_folder else osp.join(
+                    cfg.work_dir, inds_to_names[label], f'{img_name}{suffix}.jpg')
                 cv2.imwrite(out_path, attr_map)
 
             if pbar is not None:

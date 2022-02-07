@@ -12,7 +12,9 @@ def parse_args():
     parser.add_argument('ckpt', help='Path to a checkpoint file.')
     parser.add_argument('--work-dir', default='workdirs/', help='Directory in which the output files will be stored.')
     parser.add_argument(
-        '--plot-bboxes', action='store_true', help='Whether to plot bounding boxes on the attribution maps')
+        '--plot-bboxes', action='store_true', help='Whether to plot bounding boxes on the attribution maps.')
+    parser.add_argument(
+        '--single-folder', action='store_true', help='Whether to save all the attribution maps in a single folder.')
     parser.add_argument('--with-pbar', action='store_true', help='Whether to use a progress bar.')
     parser.add_argument('--gpu-id', type=int, default=0, help='GPU ID.')
     parser.add_argument('--seed', type=int, help='Random seed.')
@@ -37,7 +39,13 @@ def main():
     mmcv.mkdir_or_exist(args.work_dir)
     cfg.work_dir = args.work_dir
     device = torch.device(f'cuda:{args.gpu_id}')
-    show_grad_cam(cfg, ckpt=args.ckpt, plot_bboxes=args.plot_bboxes, device=device, with_pbar=args.with_pbar)
+    show_grad_cam(
+        cfg,
+        ckpt=args.ckpt,
+        plot_bboxes=args.plot_bboxes,
+        single_folder=args.single_folder,
+        device=device,
+        with_pbar=args.with_pbar)
 
 
 if __name__ == '__main__':
