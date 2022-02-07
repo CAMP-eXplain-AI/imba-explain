@@ -4,4 +4,4 @@ _base_ = [
 ]
 
 target_layer = 'features.norm5'
-attr_scale = 16
+attr_normalizer = dict(type='MinMaxNormalizer')

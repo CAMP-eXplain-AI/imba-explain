@@ -20,9 +20,22 @@ class WeightedBCEWithLogits(nn.Module):
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.class_weight = class_weight
+        # global means in the whole dataset
+        self.min_global_pos_weight: Optional[float] = None
 
-    @staticmethod
-    def compute_pos_weight(label: torch.Tensor) -> torch.Tensor:
+    def receive_data_dist_info(self, num_pos_neg: Tensor) -> None:
+        """Compute the maximal neg / pos ratio, which is used for computing the positive weight when a batch contains
+        only positive or negative samples.
+
+        Args:
+            num_pos_neg: Number of positive and negative samples. The shape should be (2, num_classes).  The first row
+                indicates the positive samples of each class, and the second row indicates the negative samples of each
+                class.
+        """
+        min_global_pos_weight = (num_pos_neg[1] / num_pos_neg[0]).min()
+        self.min_global_pos_weight: float = min_global_pos_weight.item()
+
+    def compute_pos_weight(self, label: torch.Tensor) -> torch.Tensor:
         """For each class, if the batch consists of all negative/positive samples, set the pos_weight to 1, otherwise
         num_neg / num_pos."""
         # one-hot encoded label: (num_samples, num_classes)
@@ -32,11 +45,11 @@ class WeightedBCEWithLogits(nn.Module):
 
         # binary mask
         # 1 means set pos_weight of the class to num_neg / num_pos
-        # 0 means set pos_weight of the class to 1
+        # 0 means set pos_weight of the class to self.min_global_pos_weight
         mask = torch.logical_and(num_neg != 0, num_pos != 0).to(label)
         pos_weight = num_neg / (num_pos + 1e-6)
 
-        ones = torch.ones_like(pos_weight)
+        ones = torch.full_like(pos_weight, fill_value=self.min_global_pos_weight)
         pos_weight = pos_weight * mask + ones * (1 - mask)
 
         return pos_weight

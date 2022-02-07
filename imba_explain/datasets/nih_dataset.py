@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from ignite.utils import setup_logger
+from tabulate import tabulate
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -65,7 +66,7 @@ class NIHClassificationDataset(Dataset):
         self.img_files = os.listdir(self.img_root)
         label_df = pd.read_csv(self.label_csv)
         label_df.set_index('Image Index', inplace=True)
-        # img_file to disease anmes. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
+        # img_file to disease names. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
         self.img_to_diseases = {}
         self.num_pos_neg = torch.zeros((2, self.num_classes), dtype=torch.long)
         for img_file in self.img_files:
@@ -76,8 +77,13 @@ class NIHClassificationDataset(Dataset):
 
         logger = setup_logger('imba-explain')
         log_nums = self.num_pos_neg.numpy()
-        logger.info(f'Dataset under {self.img_root}: \nNumber of positive samples: {log_nums[0]};\n'
-                    f'Number of negative samples {log_nums[1]}.')
+        disease_names = [item[0] for item in sorted(nih_cls_name_to_ind.items(), key=lambda x: x[1])]
+        tabular_data = {'Name': disease_names, 'Positive Number': log_nums[0], 'Negative Number': log_nums[1]}
+        log_table = tabulate(tabular_data, headers='keys', tablefmt='github')
+        log_str = f'Dataset under {self.img_root}.\n'
+        log_str += 'Numbers of positive/negative samples w.r.t. each class:\n'
+        log_str += f'{log_table}'
+        logger.info(log_str)
 
         self.pipeline = build_pipeline(pipeline)
 
