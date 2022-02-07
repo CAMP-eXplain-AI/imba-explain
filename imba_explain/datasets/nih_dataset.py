@@ -37,17 +37,10 @@ nih_cls_name_to_ind = {
 nih_bbox_name_to_ind = {
     'Atelectasis': 0,
     'Cardiomegaly': 1,
-    'Consolidation': 2,
-    'Edema': 3,
     'Effusion': 4,
-    'Emphysema': 5,
-    'Fibrosis': 6,
-    'Hernia': 7,
     'Infiltrate': 8,
     'Mass': 9,
-    'No Finding': 10,
     'Nodule': 11,
-    'Pleural_Thickening': 12,
     'Pneumonia': 13,
     'Pneumothorax': 14
 }
