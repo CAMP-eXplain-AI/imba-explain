@@ -3,11 +3,11 @@ import torch
 from argparse import ArgumentParser
 from mmcv import DictAction
 
-from imba_explain.explain_apis import show_grad_cam
+from imba_explain.explain_apis import show_attr_maps
 
 
 def parse_args():
-    parser = ArgumentParser('Show GradCAM attribution maps.')
+    parser = ArgumentParser('Show attribution maps.')
     parser.add_argument('config', help='Path to a configuration file.')
     parser.add_argument('ckpt', help='Path to a checkpoint file.')
     parser.add_argument('--work-dir', default='workdirs/', help='Directory in which the output files will be stored.')
@@ -39,7 +39,7 @@ def main():
     mmcv.mkdir_or_exist(args.work_dir)
     cfg.work_dir = args.work_dir
     device = torch.device(f'cuda:{args.gpu_id}')
-    show_grad_cam(
+    show_attr_maps(
         cfg,
         ckpt=args.ckpt,
         plot_bboxes=args.plot_bboxes,

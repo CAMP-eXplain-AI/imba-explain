@@ -6,24 +6,23 @@ import cv2
 import mmcv
 import numpy as np
 import torch
-from captum.attr import LayerGradCam
 from ignite.utils import manual_seed, setup_logger
 from mmcv import Config
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..classifiers import build_classifier, get_module
+from ..classifiers import build_classifier
 from ..datasets import bbox_collate_fn, build_dataset
-from .attr_normalizers import build_normalizer
 from .bbox_visualizer import add_multiple_labels, draw_multiple_rectangles
+from .builder import build_attributions
 
 
-def show_grad_cam(cfg: Config,
-                  ckpt: str,
-                  plot_bboxes: bool = True,
-                  single_folder: bool = True,
-                  device: Union[str, torch.device] = 'cuda:0',
-                  with_pbar: bool = True) -> None:
+def show_attr_maps(cfg: Config,
+                   ckpt: str,
+                   plot_bboxes: bool = True,
+                   single_folder: bool = True,
+                   device: Union[str, torch.device] = 'cuda:0',
+                   with_pbar: bool = True) -> None:
     manual_seed(cfg.get('seed', 2022))
     logger = setup_logger('imba-explain')
 
@@ -46,10 +45,8 @@ def show_grad_cam(cfg: Config,
     classifier.to(device)
     classifier.eval()
 
-    target_layer = get_module(classifier, cfg.target_layer)
-    grad_cam = LayerGradCam(classifier, target_layer)
-    # attribution map normalizer
-    attr_normalizer = build_normalizer(cfg.attr_normalizer)
+    attribution_method = build_attributions(cfg.attribution_method)
+    attribution_method.set_classifier(classifier)
 
     pbar = tqdm(total=len(explain_set)) if with_pbar else None
 
@@ -72,13 +69,7 @@ def show_grad_cam(cfg: Config,
 
             unique_labels = np.unique(labels)
             for i, label in enumerate(unique_labels):
-                attr_map = grad_cam.attribute(img, int(label), relu_attributions=True)
-                if attr_map.shape[:2] != (1, 1):
-                    raise ValueError(f'Attribution map has incorrect shape: {attr_map.shape}. '
-                                     f'A valid shape should be (1, 1, height, width).')
-                attr_map = attr_map.squeeze(0).squeeze(0).detach().cpu().numpy()
-                # normalize the attribution map and convert it to an image
-                attr_map = attr_normalizer(attr_map)
+                attr_map = attribution_method(img, int(label))
                 attr_map = cv2.resize(attr_map, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
                 # attr_map is in BGR mode.
                 attr_map = cv2.applyColorMap(attr_map, cv2.COLORMAP_VIRIDIS)

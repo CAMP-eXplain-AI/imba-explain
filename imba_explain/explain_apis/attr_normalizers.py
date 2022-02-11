@@ -1,14 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
-from mmcv import Registry
 
-NORMALIZERS = Registry('Attribution Normalizers')
-
-
-def build_normalizer(cfg: Dict, default_args: Optional[Dict] = None) -> Any:
-    return NORMALIZERS.build(cfg, default_args=default_args)
+from .builder import NORMALIZERS
 
 
 class BaseNormalizer(metaclass=ABCMeta):
