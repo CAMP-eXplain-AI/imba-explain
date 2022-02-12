@@ -80,10 +80,11 @@ class NIHClassificationDataset(Dataset):
         self._imba_sampling_weights = _imba_sampling_weights
 
         disease_names = [item[0] for item in sorted(nih_cls_name_to_ind.items(), key=lambda x: x[1])]
-        tabular_data = {'Name': disease_names, 'Positive\nNumber': log_nums[0], 'Negative\nNumber': log_nums[1]}
+        tabular_data = {'Name': disease_names, 'Positive Number': log_nums[0], 'Negative Number': log_nums[1]}
         if print_sampling_weights:
-            tabular_data.update({'Imbalanced\nSampling Weights': self._imba_sampling_weights})
-        log_table = tabulate(tabular_data, headers='keys', tablefmt='github', floatfmt='.3f', numalign='left')
+            tabular_data.update({'Imbalanced Sampling Weights': self._imba_sampling_weights})
+        log_table = tabulate(
+            tabular_data, headers='keys', tablefmt='github', floatfmt='.3f', numalign='left', stralign='left')
         log_str = f'Statistics of dataset under {self.img_root}\n'
         log_str += 'Numbers of positive/negative samples w.r.t. each class:\n'
         log_str += f'{log_table}'
