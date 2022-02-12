@@ -50,7 +50,11 @@ nih_bbox_name_to_ind = {
 class NIHClassificationDataset(Dataset):
     num_classes = 15
 
-    def __init__(self, img_root: str, label_csv: str, pipeline: List[Dict]) -> None:
+    def __init__(self,
+                 img_root: str,
+                 label_csv: str,
+                 pipeline: List[Dict],
+                 print_sampling_weights: bool = False) -> None:
         super().__init__()
 
         self.img_root = img_root
@@ -70,9 +74,16 @@ class NIHClassificationDataset(Dataset):
 
         logger = setup_logger('imba-explain')
         log_nums = self.num_pos_neg.numpy()
+        # sampling weights when performing weighted sampling: 1 / num_pos
+        _imba_sampling_weights = 1 / (log_nums[0].astype(float) + 1e-6)
+        _imba_sampling_weights /= _imba_sampling_weights.sum()
+        self._imba_sampling_weights = _imba_sampling_weights
+
         disease_names = [item[0] for item in sorted(nih_cls_name_to_ind.items(), key=lambda x: x[1])]
-        tabular_data = {'Name': disease_names, 'Positive Number': log_nums[0], 'Negative Number': log_nums[1]}
-        log_table = tabulate(tabular_data, headers='keys', tablefmt='github')
+        tabular_data = {'Name': disease_names, 'Positive\nNumber': log_nums[0], 'Negative\nNumber': log_nums[1]}
+        if print_sampling_weights:
+            tabular_data.update({'Imbalanced\nSampling Weights': self._imba_sampling_weights})
+        log_table = tabulate(tabular_data, headers='keys', tablefmt='github', floatfmt='.3f', numalign='left')
         log_str = f'Statistics of dataset under {self.img_root}\n'
         log_str += 'Numbers of positive/negative samples w.r.t. each class:\n'
         log_str += f'{log_table}'
@@ -82,6 +93,10 @@ class NIHClassificationDataset(Dataset):
 
     def get_num_pos_neg(self) -> torch.Tensor:
         return self.num_pos_neg
+
+    @property
+    def imba_sampling_weights(self) -> np.ndarray:
+        return self._imba_sampling_weights
 
     def one_hot_encode(self, diseases: List[str], dtype: torch.dtype = torch.float32) -> torch.Tensor:
         """

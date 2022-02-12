@@ -12,6 +12,7 @@ from ignite.metrics import Accuracy
 from ignite.utils import manual_seed, setup_logger
 from mmcv import Config
 from mmcv.runner import build_optimizer
+from torch.utils.data import WeightedRandomSampler
 
 from ..classifiers import build_classifier
 from ..datasets import build_dataset
@@ -40,8 +41,16 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     logger.info(f'Training set size: {len(train_set)} samples. Validation set size: {len(val_set)} samples.')
 
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
+    use_weighted_sampler = data_loader_cfg.pop('weighted_sampler', False)
+    if use_weighted_sampler:
+        if not hasattr(train_set, 'imba_sampling_weights'):
+            raise ValueError('The training  dataset class must have the attribute imba_sampling_weights, '
+                             'when weighted_sampler in data_loader config is True.')
+        weights = train_set.get_sampling_weights()
+        sampler = WeightedRandomSampler(weights, num_samples=len(train_set))
+        data_loader_cfg.update({'sampler': sampler})
     train_loader = idist.auto_dataloader(train_set, **data_loader_cfg)
-    data_loader_cfg.update({'shuffle': False})
+    data_loader_cfg.update({'shuffle': False, 'sampler': None})
     val_loader = idist.auto_dataloader(val_set, **data_loader_cfg)
     epoch_length = len(train_loader)
 
