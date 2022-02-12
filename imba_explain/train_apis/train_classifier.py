@@ -48,7 +48,7 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
                              'when weighted_sampler in data_loader config is True.')
         weights = train_set.imba_sampling_weights
         sampler = WeightedRandomSampler(weights, num_samples=len(train_set))
-        data_loader_cfg.update({'sampler': sampler})
+        data_loader_cfg.update({'sampler': sampler, 'shuffle': False})
     train_loader = idist.auto_dataloader(train_set, **data_loader_cfg)
     data_loader_cfg.update({'shuffle': False, 'sampler': None})
     val_loader = idist.auto_dataloader(val_set, **data_loader_cfg)
