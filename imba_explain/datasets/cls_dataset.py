@@ -1,5 +1,5 @@
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -19,11 +19,9 @@ class ClassificationDataset(Dataset, ABC):
         self._imba_sampling_weights: Optional[np.ndarray] = None
         self._clip_ratio = clip_ratio
 
-    @abstractmethod
     def get_num_pos_neg(self) -> torch.Tensor:
         raise NotImplementedError
 
-    @abstractmethod
     @property
     def num_classes(self) -> int:
         raise NotImplementedError
