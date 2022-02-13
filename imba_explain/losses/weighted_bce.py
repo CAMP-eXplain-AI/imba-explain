@@ -85,7 +85,7 @@ class InterWeightedBCEWithLogits(nn.Module):
         super(InterWeightedBCEWithLogits, self).__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
-        self.class_weight: Optional[Tensor] = None
+        self.register_buffer('class_weight', None)
 
     def receive_data_dist_info(self, num_pos_neg: Tensor) -> None:
         """Weight for each class is sqrt(n_c / (n_dominant + n_total))"""
@@ -105,9 +105,13 @@ class InterWeightedBCEWithLogits(nn.Module):
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (reduction_override if reduction_override else self.reduction)
 
-        class_weight = cls_score.new_tensor(self.class_weight)
-
         loss_cls = self.loss_weight * binary_cross_entropy(
-            cls_score, label, weight, class_weight=class_weight, reduction=reduction, avg_factor=avg_factor, **kwargs)
+            cls_score,
+            label,
+            weight,
+            class_weight=self.class_weight,
+            reduction=reduction,
+            avg_factor=avg_factor,
+            **kwargs)
 
         return loss_cls
