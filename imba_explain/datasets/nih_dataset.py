@@ -44,17 +44,20 @@ class NIHClassificationDataset(ClassificationDataset):
         self.img_files = os.listdir(self.img_root)
         label_df = pd.read_csv(self.label_csv)
         label_df.set_index('Image Index', inplace=True)
+
         # img_file to disease names. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
         self.img_to_diseases = {}
+
+        disease_names = [item[0] for item in sorted(self.nih_cls_name_to_ind.items(), key=lambda x: x[1])]
+        self._num_classes = len(disease_names)
         self.num_pos_neg = torch.zeros((2, self.num_classes), dtype=torch.long)
+
         for img_file in self.img_files:
             diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
             self.img_to_diseases.update({img_file: diseases})
             self.num_pos_neg[0] += self.one_hot_encode(self.nih_cls_name_to_ind, diseases, dtype=torch.long)
         self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
 
-        disease_names = [item[0] for item in sorted(self.nih_cls_name_to_ind.items(), key=lambda x: x[1])]
-        self._num_classes = len(disease_names)
         self.log_data_dist_info(class_names=disease_names)
 
     @property
