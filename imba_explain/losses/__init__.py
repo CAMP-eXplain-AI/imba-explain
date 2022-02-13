@@ -4,15 +4,9 @@ from .class_balanced import ClassBalancedLoss
 from .cross_entropy import CrossEntropyLoss
 from .focal import FocalLoss
 from .multi_task import MultiTaskLoss
-from .weighted_bce import WeightedBCEWithLogits
+from .weighted_bce import InterWeightedBCEWithLogits, IntraWeightedBCEWithLogits
 
 __all__ = [
-    'AsymmetricLoss',
-    'CrossEntropyLoss',
-    'ClassBalancedLoss',
-    'FocalLoss',
-    'LOSSES',
-    'MultiTaskLoss',
-    'build_loss',
-    'WeightedBCEWithLogits',
+    'AsymmetricLoss', 'CrossEntropyLoss', 'ClassBalancedLoss', 'FocalLoss', 'LOSSES', 'MultiTaskLoss', 'build_loss',
+    'IntraWeightedBCEWithLogits', 'InterWeightedBCEWithLogits'
 ]

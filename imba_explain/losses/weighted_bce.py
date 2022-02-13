@@ -10,13 +10,13 @@ from .cross_entropy import binary_cross_entropy
 
 
 @LOSSES.register_module()
-class WeightedBCEWithLogits(nn.Module):
+class IntraWeightedBCEWithLogits(nn.Module):
 
     def __init__(self,
                  reduction: str = 'mean',
                  loss_weight: float = 1.0,
                  class_weight: Optional[Union[List, np.ndarray]] = None) -> None:
-        super(WeightedBCEWithLogits, self).__init__()
+        super(IntraWeightedBCEWithLogits, self).__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.class_weight = class_weight
@@ -71,6 +71,41 @@ class WeightedBCEWithLogits(nn.Module):
 
         pos_weight = self.compute_pos_weight(label)
         kwargs.update({'pos_weight': pos_weight})
+
+        loss_cls = self.loss_weight * binary_cross_entropy(
+            cls_score, label, weight, class_weight=class_weight, reduction=reduction, avg_factor=avg_factor, **kwargs)
+
+        return loss_cls
+
+
+@LOSSES.register_module()
+class InterWeightedBCEWithLogits(nn.Module):
+
+    def __init__(self, reduction: str = 'mean', loss_weight: float = 1.0) -> None:
+        super(InterWeightedBCEWithLogits, self).__init__()
+        self.reduction = reduction
+        self.loss_weight = loss_weight
+        self.class_weight: Optional[Tensor] = None
+
+    def receive_data_dist_info(self, num_pos_neg: Tensor) -> None:
+        """Weight for each class is sqrt(n_c / (n_dominant + n_total))"""
+        num_pos = num_pos_neg[0]
+        num_dominant = num_pos.max()
+        class_weight = torch.sqrt(num_pos / (num_dominant + num_pos.sum()))
+        class_weight /= class_weight.sum()
+        self.class_weight = class_weight
+
+    def forward(self,
+                cls_score: Tensor,
+                label: Tensor,
+                weight: Optional[Tensor] = None,
+                avg_factor: Optional[float] = None,
+                reduction_override: Optional[str] = None,
+                **kwargs: Any) -> torch.Tensor:
+        assert reduction_override in (None, 'none', 'mean', 'sum')
+        reduction = (reduction_override if reduction_override else self.reduction)
+
+        class_weight = cls_score.new_tensor(self.class_weight)
 
         loss_cls = self.loss_weight * binary_cross_entropy(
             cls_score, label, weight, class_weight=class_weight, reduction=reduction, avg_factor=avg_factor, **kwargs)

@@ -10,7 +10,7 @@ import torch
 from ignite.engine import Engine, Events
 from ignite.utils import setup_logger
 
-from ..datasets.nih_dataset import nih_cls_name_to_ind
+from ..datasets.nih_dataset import NIHClassificationDataset
 
 
 class MetricsTextLogger:
@@ -73,8 +73,8 @@ class PredictionsSaver:
         target = self.buffers['target']
         img_files = self.buffers['img_file']
         df = pd.DataFrame(img_files, columns=['Image Index'])
-        df[['p-' + x for x in nih_cls_name_to_ind.keys()]] = pred
-        df[['t-' + x for x in nih_cls_name_to_ind.keys()]] = target
+        df[['p-' + x for x in NIHClassificationDataset.nih_cls_name_to_ind.keys()]] = pred
+        df[['t-' + x for x in NIHClassificationDataset.nih_cls_name_to_ind.keys()]] = target
         for k, v in self.buffers.items():
             if k not in ['pred', 'target', 'img_file']:
                 df[k] = v
