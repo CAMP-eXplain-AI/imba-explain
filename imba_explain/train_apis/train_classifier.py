@@ -44,9 +44,9 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     use_weighted_sampler = data_loader_cfg.pop('weighted_sampler', False)
     if use_weighted_sampler:
         if not hasattr(train_set, 'imba_sampling_weights'):
-            raise ValueError('The training  dataset class must have the attribute imba_sampling_weights, '
+            raise ValueError('The training  dataset class must implement the method imba_sampling_weights, '
                              'when weighted_sampler in data_loader config is True.')
-        weights = train_set.imba_sampling_weights
+        weights = train_set.imba_sampling_weights()
         sampler = WeightedRandomSampler(weights, num_samples=len(train_set))
         data_loader_cfg.update({'sampler': sampler, 'shuffle': False})
     train_loader = idist.auto_dataloader(train_set, **data_loader_cfg)

@@ -27,7 +27,10 @@ class ClassificationDataset(Dataset, ABC):
         raise NotImplementedError
 
     @property
-    def imba_sampling_weights(self) -> np.ndarray:
+    def class_names(self) -> List[str]:
+        raise NotImplementedError
+
+    def imba_sampling_weights(self, logger: Optional[logging.Logger] = None) -> np.ndarray:
         if self._imba_sampling_weights is not None:
             return self._imba_sampling_weights
         else:
@@ -39,6 +42,14 @@ class ClassificationDataset(Dataset, ABC):
                 _imba_sampling_weights = np.clip(_imba_sampling_weights, a_min=0, a_max=clip_val)
             _imba_sampling_weights /= _imba_sampling_weights.sum()
             self._imba_sampling_weights = _imba_sampling_weights
+
+            logger = setup_logger('imba-explain') if logger is None else logger
+            tabular_data = {'Name': self.class_names, 'Sampling Weights': self._imba_sampling_weights.round(3)}
+            log_table = tabulate(tabular_data, headers='keys', tablefmt='pretty', numalign='left', stralign='left')
+            log_str = 'Sampling weights of w.r.t. each class:\n'
+            log_str += f'{log_table}'
+            logger.info(log_str)
+
             return self._imba_sampling_weights
 
     def log_data_dist_info(self, class_names: List[str], logger: Optional[logging.Logger] = None) -> None:
@@ -46,8 +57,6 @@ class ClassificationDataset(Dataset, ABC):
             logger = setup_logger('imba-explain')
         num_pos_neg = self.get_num_pos_neg().numpy()
         tabular_data = {'Name': class_names, 'Positive Number': num_pos_neg[0], 'Negative Number': num_pos_neg[1]}
-        if self._clip_ratio is not None:
-            tabular_data.update({'Imbalanced Sampling Weights': self._imba_sampling_weights.round(3)})
         log_table = tabulate(tabular_data, headers='keys', tablefmt='pretty', numalign='left', stralign='left')
         log_str = 'Numbers of positive/negative samples w.r.t. each class:\n'
         log_str += f'{log_table}'

@@ -48,8 +48,8 @@ class NIHClassificationDataset(ClassificationDataset):
         # img_file to disease names. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
         self.img_to_diseases = {}
 
-        disease_names = [item[0] for item in sorted(self.nih_cls_name_to_ind.items(), key=lambda x: x[1])]
-        self._num_classes = len(disease_names)
+        self._class_names = [item[0] for item in sorted(self.nih_cls_name_to_ind.items(), key=lambda x: x[1])]
+        self._num_classes = len(self._class_names)
         self.num_pos_neg = torch.zeros((2, self.num_classes), dtype=torch.long)
 
         for img_file in self.img_files:
@@ -58,11 +58,15 @@ class NIHClassificationDataset(ClassificationDataset):
             self.num_pos_neg[0] += self.one_hot_encode(self.nih_cls_name_to_ind, diseases, dtype=torch.long)
         self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
 
-        self.log_data_dist_info(class_names=disease_names)
+        self.log_data_dist_info(class_names=self._class_names)
 
     @property
     def num_classes(self) -> int:
         return self._num_classes
+
+    @property
+    def class_names(self) -> List[str]:
+        return self._class_names
 
     def get_num_pos_neg(self) -> torch.Tensor:
         return self.num_pos_neg
