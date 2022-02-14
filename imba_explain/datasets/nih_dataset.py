@@ -17,7 +17,7 @@ from .utils import load_bbox_annot
 
 @DATASETS.register_module()
 class NIHClassificationDataset(ClassificationDataset):
-    nih_cls_name_to_ind = {
+    name_to_ind = {
         'Atelectasis': 0,
         'Cardiomegaly': 1,
         'Consolidation': 2,
@@ -35,29 +35,44 @@ class NIHClassificationDataset(ClassificationDataset):
         'Pneumothorax': 14
     }
 
-    def __init__(self, img_root: str, label_csv: str, pipeline: List[Dict], clip_ratio: Optional[float] = None) -> None:
+    def __init__(self,
+                 img_root: str,
+                 label_csv: str,
+                 pipeline: List[Dict],
+                 clip_ratio: Optional[float] = None,
+                 select_classes: Optional[List[Union[str, int]]] = None) -> None:
         super().__init__(pipeline=pipeline, clip_ratio=clip_ratio)
 
         self.img_root = img_root
         self.label_csv = label_csv
 
-        self.img_files = os.listdir(self.img_root)
         label_df = pd.read_csv(self.label_csv)
         label_df.set_index('Image Index', inplace=True)
 
+        self._class_names = [item[0] for item in sorted(self.name_to_ind.items(), key=lambda x: x[1])]
+        self._num_classes = len(self._class_names)
+        if select_classes is not None:
+            ind_to_name = {v: k for k, v in self.name_to_ind.items()}
+            select_classes = [ind_to_name[i] if isinstance(i, int) else i for i in select_classes]
+        else:
+            select_classes = self._class_names
+
+        self.num_pos_neg = torch.zeros((2, self._num_classes), dtype=torch.long)
         # img_file to disease names. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
         self.img_to_diseases = {}
-
-        self._class_names = [item[0] for item in sorted(self.nih_cls_name_to_ind.items(), key=lambda x: x[1])]
-        self._num_classes = len(self._class_names)
-        self.num_pos_neg = torch.zeros((2, self.num_classes), dtype=torch.long)
-
-        for img_file in self.img_files:
+        all_img_files = os.listdir(self.img_root)
+        # img files after being filtered
+        self.img_files = []
+        for img_file in all_img_files:
             diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
-            self.img_to_diseases.update({img_file: diseases})
-            self.num_pos_neg[0] += self.one_hot_encode(self.nih_cls_name_to_ind, diseases, dtype=torch.long)
-        self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
+            diseases = [d for d in diseases if d in select_classes]
+            # drop the sample if no label of selective classes is found
+            if len(diseases) > 0:
+                self.img_to_diseases.update({img_file: diseases})
+                self.num_pos_neg[0] += self.one_hot_encode(self.name_to_ind, diseases, dtype=torch.long)
+                self.img_files.append(img_file)
 
+        self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
         self.log_data_dist_info(class_names=self._class_names)
 
     @property
@@ -81,7 +96,7 @@ class NIHClassificationDataset(ClassificationDataset):
         result = {'img': img, 'img_file': img_file}
 
         diseases = self.img_to_diseases[img_file]
-        one_hot_label = self.one_hot_encode(self.nih_cls_name_to_ind, diseases)
+        one_hot_label = self.one_hot_encode(self.name_to_ind, diseases)
         result.update({'target': one_hot_label})
 
         return result
@@ -111,10 +126,10 @@ class NIHDetectionDataset(Dataset):
 
         self.xml_files = os.listdir(self.annot_root)
 
-        self.inds_to_names = {v: k for k, v in self.nih_bbox_name_to_ind.items()}
+        self.ind_to_name = {v: k for k, v in self.nih_bbox_name_to_ind.items()}
 
-    def get_inds_to_names(self) -> Dict[int, str]:
-        return self.inds_to_names
+    def get_ind_to_name(self) -> Dict[int, str]:
+        return self.ind_to_name
 
     def __len__(self) -> int:
         return len(self.xml_files)

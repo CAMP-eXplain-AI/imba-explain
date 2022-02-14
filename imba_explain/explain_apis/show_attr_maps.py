@@ -29,9 +29,9 @@ def show_attr_maps(cfg: Config,
     explain_set = build_dataset(cfg.data['explain'])
     logger.info(f'Dataset under: {explain_set.img_root} contains {len(explain_set)} images')
     # a dict that maps label indices to bbox label names
-    inds_to_names = explain_set.get_inds_to_names()
+    ind_to_name = explain_set.get_ind_to_name()
     if not single_folder:
-        for name in inds_to_names.values():
+        for name in ind_to_name.values():
             mmcv.mkdir_or_exist(osp.join(cfg.work_dir, name))
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False, 'drop_last': False})
@@ -77,14 +77,14 @@ def show_attr_maps(cfg: Config,
                 if plot_bboxes:
                     bboxes_to_draw = bboxes[labels == label]
                     labels_to_draw = labels[labels == label]
-                    labels_to_draw = [f'{inds_to_names[i]}: {pred[i]:.2f}' for i in labels_to_draw]
+                    labels_to_draw = [f'{ind_to_name[i]}: {pred[i]:.2f}' for i in labels_to_draw]
                     attr_map = draw_multiple_rectangles(attr_map, bboxes_to_draw, **cfg.bbox_cfg)
                     attr_map = add_multiple_labels(attr_map, labels_to_draw, bboxes_to_draw, **cfg.bbox_label_cfg)
 
                 img_name = osp.splitext(osp.basename(img_file))[0]
                 suffix = '' if i == 0 else f'-{i + 1}'
                 out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.jpg') if single_folder else osp.join(
-                    cfg.work_dir, inds_to_names[label], f'{img_name}{suffix}.jpg')
+                    cfg.work_dir, ind_to_name[label], f'{img_name}{suffix}.jpg')
                 cv2.imwrite(out_path, attr_map)
 
             if pbar is not None:

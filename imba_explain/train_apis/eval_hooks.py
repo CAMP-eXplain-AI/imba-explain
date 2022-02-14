@@ -1,7 +1,7 @@
 from collections import defaultdict
 from itertools import chain
 from logging import Logger
-from typing import Optional
+from typing import List, Optional
 
 import ignite.distributed as idist
 import numpy as np
@@ -9,8 +9,6 @@ import pandas as pd
 import torch
 from ignite.engine import Engine, Events
 from ignite.utils import setup_logger
-
-from ..datasets.nih_dataset import NIHClassificationDataset
 
 
 class MetricsTextLogger:
@@ -34,13 +32,14 @@ class MetricsTextLogger:
 
 class PredictionsSaver:
 
-    def __init__(self, file_path: str, logger: Optional[Logger] = None) -> None:
+    def __init__(self, file_path: str, class_names: List[str], logger: Optional[Logger] = None) -> None:
         if idist.get_world_size() > 1:
             raise RuntimeError(f'PredictionSaver only support the non-distributed setting, '
                                f'but the world size is {idist.get_world_size()}.')
         if not file_path.endswith('.csv'):
             raise ValueError(f"file path must be a string ending with '.csv', but got {file_path}.")
 
+        self.class_names = class_names
         self.file_path = file_path
         self.logger = logger if logger is not None else setup_logger('imba-explain')
         self.buffers = defaultdict(list)
@@ -73,8 +72,8 @@ class PredictionsSaver:
         target = self.buffers['target']
         img_files = self.buffers['img_file']
         df = pd.DataFrame(img_files, columns=['Image Index'])
-        df[['p-' + x for x in NIHClassificationDataset.nih_cls_name_to_ind.keys()]] = pred
-        df[['t-' + x for x in NIHClassificationDataset.nih_cls_name_to_ind.keys()]] = target
+        df[['p-' + x for x in self.class_names]] = pred
+        df[['t-' + x for x in self.class_names]] = target
         for k, v in self.buffers.items():
             if k not in ['pred', 'target', 'img_file']:
                 df[k] = v

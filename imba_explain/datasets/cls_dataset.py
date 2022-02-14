@@ -63,13 +63,13 @@ class ClassificationDataset(Dataset, ABC):
         logger.info(log_str)
 
     def one_hot_encode(self,
-                       names_to_inds: Dict,
+                       name_to_ind: Dict,
                        diseases: List[str],
                        dtype: torch.dtype = torch.float32) -> torch.Tensor:
         """
 
         Args:
-            names_to_inds: Dict that maps class names to indices
+            name_to_ind: Dict that maps class name to index
             diseases: Disease names of an image sample.
             dtype: Data type of output Tensor.
 
@@ -77,7 +77,7 @@ class ClassificationDataset(Dataset, ABC):
             one-hot encoded label. Note that there can be multiple ones in the tensor, although the tensor is named
             "one-hot" label.
         """
-        label = torch.LongTensor([names_to_inds[disease_name] for disease_name in diseases])
+        label = torch.LongTensor([name_to_ind[disease_name] for disease_name in diseases])
         one_hot_label = torch.zeros(self.num_classes, dtype=dtype)
         one_hot_label.scatter_(0, label, 1)
         return one_hot_label

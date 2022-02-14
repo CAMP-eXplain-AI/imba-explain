@@ -31,6 +31,8 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     logger = setup_logger('imba-explain')
 
     test_set = build_dataset(cfg.data['test'])
+    if not hasattr(test_set, 'class_names'):
+        raise ValueError('Dataset class should have attribute class_name.')
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False})
     test_loader = idist.auto_dataloader(test_set, **data_loader_cfg)
@@ -63,7 +65,7 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     test_results_dir = osp.join(cfg.work_dir, 'test_results')
     mmcv.mkdir_or_exist(test_results_dir)
     preds_fp = osp.join(test_results_dir, 'predictions.csv')
-    preds_saver = PredictionsSaver(preds_fp, logger=logger)
+    preds_saver = PredictionsSaver(preds_fp, test_set.class_names, logger=logger)
     preds_saver.attach(evaluator)
 
     evaluator.run(data=test_loader)
