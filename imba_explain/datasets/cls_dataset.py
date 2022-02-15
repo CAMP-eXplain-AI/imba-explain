@@ -1,6 +1,6 @@
 import logging
 from abc import ABC
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -13,22 +13,46 @@ from .builder import build_pipeline
 
 class ClassificationDataset(Dataset, ABC):
 
-    def __init__(self, pipeline: List[Dict], clip_ratio: Optional[float] = None) -> None:
+    def __init__(self,
+                 pipeline: List[Dict],
+                 clip_ratio: Optional[float] = None,
+                 select_classes: Optional[List[Union[str, int]]] = None) -> None:
         super(ClassificationDataset, self).__init__()
         self.pipeline = build_pipeline(pipeline)
         self._imba_sampling_weights: Optional[np.ndarray] = None
         self._clip_ratio = clip_ratio
+
+        self._class_names = [item[0] for item in sorted(self.name_to_ind.items(), key=lambda x: x[1])]
+        self._num_classes = len(self._class_names)
+        self._select_class_names, self._select_class_inds = self.filter_classes(select_classes)
 
     def get_num_pos_neg(self) -> torch.Tensor:
         raise NotImplementedError
 
     @property
     def num_classes(self) -> int:
-        raise NotImplementedError
+        return self._num_classes
 
     @property
     def class_names(self) -> List[str]:
-        raise NotImplementedError
+        return self._class_names
+
+    @property
+    def select_class_names(self) -> List[str]:
+        return self._select_class_names
+
+    @property
+    def select_class_inds(self) -> List[int]:
+        return self._select_class_inds
+
+    def filter_classes(self, select_classes: List[Union[str, int]]) -> Tuple[List[str], List[int]]:
+        if select_classes is not None:
+            ind_to_name = {v: k for k, v in self.name_to_ind.items()}
+            select_class_names = [ind_to_name[i] if isinstance(i, int) else i for i in select_classes]
+        else:
+            select_class_names = self._class_names
+        select_class_inds = [self.name_to_ind[i] for i in select_class_names]
+        return select_class_names, select_class_inds
 
     def imba_sampling_weights(self, logger: Optional[logging.Logger] = None) -> np.ndarray:
         if self._imba_sampling_weights is not None:

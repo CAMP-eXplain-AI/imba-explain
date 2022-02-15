@@ -4,6 +4,7 @@ from datetime import datetime
 
 import ignite.distributed as idist
 import mmcv
+from functools import partial
 from ignite.contrib.handlers import ProgressBar
 from ignite.contrib.metrics import ROC_AUC, AveragePrecision
 from ignite.engine import Engine, Events
@@ -89,10 +90,14 @@ def train_classifier(local_rank: int, cfg: Config) -> None:
     pbar = ProgressBar(persist=True)
     pbar.attach(evaluator)
 
+    # pred_select_inds is only used in cross-dataset test
+    _prob_transform = partial(prob_transform, pred_select_inds=None, target_select_inds=None)
+    _logits_transform = partial(logits_transform, pred_select_inds=None, target_select_inds=None)
+
     val_metrics = {
-        'accuracy': Accuracy(output_transform=prob_transform, device=device, **cfg.class_metrics['accuracy']),
-        'roc_auc': ROC_AUC(output_transform=logits_transform, device=device, **cfg.class_metrics['roc_auc']),
-        'ap': AveragePrecision(output_transform=logits_transform, device=device, **cfg.class_metrics['ap'])
+        'accuracy': Accuracy(output_transform=_prob_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=_logits_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'ap': AveragePrecision(output_transform=_logits_transform, device=device, **cfg.class_metrics['ap'])
     }
     for name, metric in val_metrics.items():
         metric.attach(engine=evaluator, name=name)

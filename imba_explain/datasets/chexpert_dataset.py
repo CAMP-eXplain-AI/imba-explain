@@ -38,19 +38,9 @@ class CheXpertDataset(ClassificationDataset):
                  indices_file: Optional[str] = None,
                  clip_ratio: Optional[float] = None,
                  select_classes: Optional[List[Union[str, int]]] = None) -> None:
-        super(CheXpertDataset, self).__init__(pipeline=pipeline, clip_ratio=clip_ratio)
+        super(CheXpertDataset, self).__init__(pipeline=pipeline, clip_ratio=clip_ratio, select_classes=select_classes)
 
         self.data_root = data_root
-        self._class_names = [item[0] for item in sorted(self.name_to_ind.items(), key=lambda x: x[1])]
-        self._num_classes = len(self._class_names)
-
-        if select_classes is not None:
-            ind_to_name = {v: k for k, v in self.name_to_ind.items()}
-            select_classes = [ind_to_name[i] if isinstance(i, int) else i for i in select_classes]
-        else:
-            select_classes = self._class_names
-
-        self.select_classes = select_classes
 
         self.label_csv = pd.read_csv(label_csv)
         self.label_csv.fillna(0, inplace=True)
@@ -60,7 +50,7 @@ class CheXpertDataset(ClassificationDataset):
 
         indices = np.array(mmcv.list_from_file(indices_file), dtype=int) if indices_file is not None \
             else np.arange(len(self.label_csv))
-        is_selected = (np.count_nonzero(self.label_csv.loc[indices, select_classes], axis=1) != 0)
+        is_selected = (np.count_nonzero(self.label_csv.loc[indices, self._select_class_names], axis=1) != 0)
         self.indices = indices[is_selected]
 
         self.num_pos_neg = torch.zeros((2, self._num_classes), dtype=torch.long)
@@ -68,14 +58,6 @@ class CheXpertDataset(ClassificationDataset):
             self.label_csv.loc[self.indices, self._class_names].values.sum(0), dtype=torch.long)
         self.num_pos_neg[1] = len(self.indices) - self.num_pos_neg[0]
         self.log_data_dist_info(class_names=self._class_names)
-
-    @property
-    def num_classes(self) -> int:
-        return self._num_classes
-
-    @property
-    def class_names(self) -> List[str]:
-        return self._class_names
 
     def get_num_pos_neg(self) -> torch.Tensor:
         return self.num_pos_neg

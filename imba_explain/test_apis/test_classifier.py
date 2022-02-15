@@ -5,6 +5,7 @@ from typing import Union
 import ignite.distributed as idist
 import mmcv
 import torch
+from functools import partial
 from ignite.contrib.handlers import ProgressBar
 from ignite.contrib.metrics import ROC_AUC, AveragePrecision
 from ignite.engine import Engine
@@ -30,7 +31,7 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
 
     logger = setup_logger('imba-explain')
 
-    test_set = build_dataset(cfg.data['test'])
+    test_set = build_dataset(cfg.data['test'])  # noqa
     if not hasattr(test_set, 'class_names'):
         raise ValueError('Dataset class should have attribute class_name.')
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
@@ -51,10 +52,17 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     pbar = ProgressBar(persist=True)
     pbar.attach(evaluator)
 
+    target_select_names = test_set.select_class_names
+    target_select_inds = test_set.select_class_inds
+    pred_select_inds = cfg.get('pred_select_inds', None)
+    _prob_transform = partial(prob_transform, pred_select_inds=pred_select_inds, target_select_inds=target_select_inds)
+    _logits_transform = partial(
+        logits_transform, pred_select_inds=pred_select_inds, target_select_inds=target_select_inds)
+
     test_metrics = {
-        'accuracy': Accuracy(output_transform=prob_transform, device=device, **cfg.class_metrics['accuracy']),
-        'roc_auc': ROC_AUC(output_transform=logits_transform, device=device, **cfg.class_metrics['roc_auc']),
-        'ap': AveragePrecision(output_transform=logits_transform, device=device, **cfg.class_metrics['ap'])
+        'accuracy': Accuracy(output_transform=_prob_transform, device=device, **cfg.class_metrics['accuracy']),
+        'roc_auc': ROC_AUC(output_transform=_logits_transform, device=device, **cfg.class_metrics['roc_auc']),
+        'ap': AveragePrecision(output_transform=_logits_transform, device=device, **cfg.class_metrics['ap'])
     }
     for name, metric in test_metrics.items():
         metric.attach(engine=evaluator, name=name)
@@ -65,7 +73,8 @@ def test_classifier(cfg: Config, ckpt: str, device: Union[str, torch.device] = '
     test_results_dir = osp.join(cfg.work_dir, 'test_results')
     mmcv.mkdir_or_exist(test_results_dir)
     preds_fp = osp.join(test_results_dir, 'predictions.csv')
-    preds_saver = PredictionsSaver(preds_fp, test_set.class_names, logger=logger)
+
+    preds_saver = PredictionsSaver(preds_fp, target_select_names, target_select_inds, pred_select_inds, logger=logger)
     preds_saver.attach(evaluator)
 
     evaluator.run(data=test_loader)

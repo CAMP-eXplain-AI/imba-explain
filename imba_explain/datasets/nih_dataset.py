@@ -41,21 +41,13 @@ class NIHClassificationDataset(ClassificationDataset):
                  pipeline: List[Dict],
                  clip_ratio: Optional[float] = None,
                  select_classes: Optional[List[Union[str, int]]] = None) -> None:
-        super().__init__(pipeline=pipeline, clip_ratio=clip_ratio)
+        super().__init__(pipeline=pipeline, clip_ratio=clip_ratio, select_classes=select_classes)
 
         self.img_root = img_root
         self.label_csv = label_csv
 
         label_df = pd.read_csv(self.label_csv)
         label_df.set_index('Image Index', inplace=True)
-
-        self._class_names = [item[0] for item in sorted(self.name_to_ind.items(), key=lambda x: x[1])]
-        self._num_classes = len(self._class_names)
-        if select_classes is not None:
-            ind_to_name = {v: k for k, v in self.name_to_ind.items()}
-            select_classes = [ind_to_name[i] if isinstance(i, int) else i for i in select_classes]
-        else:
-            select_classes = self._class_names
 
         self.num_pos_neg = torch.zeros((2, self._num_classes), dtype=torch.long)
         # img_file to disease names. E.g., 0001_0000.png -> ['Edema', 'Pneumonia']
@@ -65,7 +57,7 @@ class NIHClassificationDataset(ClassificationDataset):
         self.img_files = []
         for img_file in all_img_files:
             diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
-            diseases = [d for d in diseases if d in select_classes]
+            diseases = [d for d in diseases if d in self._select_class_names]
             # drop the sample if no label of selective classes is found
             if len(diseases) > 0:
                 self.img_to_diseases.update({img_file: diseases})
@@ -74,14 +66,6 @@ class NIHClassificationDataset(ClassificationDataset):
 
         self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
         self.log_data_dist_info(class_names=self._class_names)
-
-    @property
-    def num_classes(self) -> int:
-        return self._num_classes
-
-    @property
-    def class_names(self) -> List[str]:
-        return self._class_names
 
     def get_num_pos_neg(self) -> torch.Tensor:
         return self.num_pos_neg
