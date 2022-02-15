@@ -4,3 +4,4 @@ _base_ = [
 ]
 
 classifier = dict(num_classes=14)
+loss = dict(num_classes=14)
