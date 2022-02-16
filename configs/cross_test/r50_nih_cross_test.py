@@ -1,4 +1,4 @@
-_base_ = ['../_base_/classifiers/resnet50.py', '../_base_/datasets/nih_class_dataset']
+_base_ = ['../_base_/classifiers/resnet50.py', '../_base_/datasets/nih_class_dataset.py']
 
 classifier = dict(num_classes=14)
 
