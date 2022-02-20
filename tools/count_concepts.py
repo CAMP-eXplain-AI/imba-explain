@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from typing import Union
 
@@ -33,12 +34,12 @@ def parse_args():
 
 def count_concepts(cfg: mmcv.Config,
                    ckpt: str,
+                   logger: logging.Logger,
                    with_pbar: bool = False,
                    device: Union[str, torch.device] = 'cuda:0') -> None:
-    logger = setup_logger('imba-explain')
 
     explain_set = build_dataset(cfg.data['explain'])
-    ind_to_name = explain_set.get_int_to_name()
+    ind_to_name = explain_set.get_ind_to_name()
 
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False, 'drop_last': False})
@@ -66,7 +67,10 @@ def main():
         cfg.merge_from_dict(args.cfg_options)
 
     device = torch.device(f'cuda:{args.gpu_id}')
-    count_concepts(cfg, ckpt=args.ckpt, with_pbar=args.with_pbar, device=device)
+
+    logger = setup_logger('imba-explain')
+    logger.info(f'Config:\n{cfg.pretty_text}')
+    count_concepts(cfg, ckpt=args.ckpt, logger=logger, with_pbar=args.with_pbar, device=device)
 
 
 if __name__ == '__main__':
