@@ -1,2 +1,2 @@
 quantile_threshold = 0.99
-target_layer = 'layer4.2'
+target_layer = 'layer3.5'
