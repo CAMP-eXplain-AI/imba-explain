@@ -4,4 +4,4 @@ _base_ = [
 ]
 
 # Discard train and val datasets
-data = dict(data_loader=dict(batch_size=128, shuffle=False))
+data = dict(data_loader=dict(batch_size=64, shuffle=False))
