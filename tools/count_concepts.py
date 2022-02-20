@@ -9,7 +9,7 @@ from mmcv import DictAction
 from torch.utils.data import DataLoader
 
 from imba_explain.classifiers import build_classifier
-from imba_explain.datasets import build_dataset
+from imba_explain.datasets import bbox_collate_fn, build_dataset
 from imba_explain.explain_apis import ConceptDetector
 
 
@@ -38,10 +38,12 @@ def count_concepts(cfg: mmcv.Config,
     logger = setup_logger('imba-explain')
 
     explain_set = build_dataset(cfg.data['explain'])
+    ind_to_name = explain_set.get_int_to_name()
+
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False, 'drop_last': False})
     logger.info(f'Dataloader config: {data_loader_cfg}')
-    explain_loader = DataLoader(explain_set, **data_loader_cfg)
+    explain_loader = DataLoader(explain_set, collate_fn=bbox_collate_fn, **data_loader_cfg)
 
     state_dict = torch.load(ckpt, map_location='cpu')
     logger.info(f'Using the checkpoint: {ckpt}')
@@ -54,7 +56,7 @@ def count_concepts(cfg: mmcv.Config,
 
     concept_detector.set_classifier(classifier, target_layer=cfg.target_layer)
     concept_detector.detect(explain_loader, device=device, with_pbar=with_pbar)
-    concept_detector.report(logger)
+    concept_detector.report(ind_to_name, logger)
 
 
 def main():

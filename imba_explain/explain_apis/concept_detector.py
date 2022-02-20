@@ -1,5 +1,7 @@
 import logging
-from typing import List, Optional, Sequence, Tuple, Union
+from collections import defaultdict
+from itertools import chain
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import cv2
 import numpy as np
@@ -22,7 +24,6 @@ class ConceptDetector:
         self.hook_handle: Optional[RemovableHandle] = None
 
         self._feat_maps: List[torch.Tensor] = []
-        self._num_channels: Optional[int] = None
 
         if isinstance(img_size, int):
             img_size = (img_size, img_size)
@@ -32,7 +33,9 @@ class ConceptDetector:
             raise ValueError(f'Invalid img_size: {img_size}.')
         self.img_size: Tuple[int, int] = img_size
         self.quantile_threshold = quantile_threshold
-        self.num_concepts = []
+        # map class indices to a list of integers,
+        # each integer represents the number of concepts in a single sample
+        self.num_concepts_dict = defaultdict(list)
 
     def set_classifier(
         self,
@@ -53,7 +56,7 @@ class ConceptDetector:
         self._feat_maps.clear()
 
     def reset_num_concepts(self):
-        self.num_concepts.clear()
+        self.num_concepts_dict.clear()
 
     def remove_classifier_and_hook(self) -> None:
         self.classifier = None
@@ -61,22 +64,38 @@ class ConceptDetector:
             self.hook_handle.remove()
             self.hook_handle = None
 
-    def report(self, logger: Optional[logging.Logger] = None) -> None:
-        if self._num_channels is None:
-            raise ValueError("The attribute '_num_channels' has not been set yet.")
+    def report(self, ind_to_name: Dict, logger: Optional[logging.Logger] = None) -> None:
 
         logger = setup_logger('imba-explain') if logger is None else logger
-        num_samples = len(self.num_concepts)
-        num_channels = self._num_channels
-        min_val = np.min(self.num_concepts)
-        max_val = np.max(self.num_concepts)
-        avg_val = np.round(np.mean(self.num_concepts), 4)
-        std_val = np.round(np.std(self.num_concepts), 4)
-        median_val = np.median(self.num_concepts)
+        round_prec = 4
+
+        global_num_concepts = list(chain.from_iterable(self.num_concepts_dict.values()))
+        global_min_val = np.min(global_num_concepts)
+        global_max_val = np.max(global_num_concepts)
+        global_mean_val = np.round(np.mean(global_num_concepts), round_prec)
+        global_std_val = np.round(np.std(global_num_concepts), round_prec)
+
+        class_names = [ind_to_name[k] for k in self.num_concepts_dict.keys()]
+        # append the row name '[Global]' to the class names
+        class_names.append('[Global]')
+
+        cls_wise_min_vals = [np.min(v) for v in self.num_concepts_dict.values()]
+        cls_wise_max_vals = [np.max(v) for v in self.num_concepts_dict.values()]
+        cls_wise_mean_vals = [np.round(np.mean(v), round_prec) for v in self.num_concepts_dict.values()]
+        cls_wise_std_vals = [np.round(np.std(v), round_prec) for v in self.num_concepts_dict.values()]
+
+        # append global statistics to the class-wise statistics
+        cls_wise_min_vals.append(global_min_val)
+        cls_wise_max_vals.append(global_max_val)
+        cls_wise_mean_vals.append(global_mean_val)
+        cls_wise_std_vals.append(global_std_val)
 
         tabular_data = {
-            'Statistics': ['Samples', 'Channels', 'Min', 'Max', 'Average', 'Std', 'Median'],
-            'Concepts': [num_samples, num_channels, min_val, max_val, avg_val, std_val, median_val]
+            'Classes': class_names,
+            'Min': cls_wise_min_vals,
+            'Max': cls_wise_max_vals,
+            'Mean': cls_wise_mean_vals,
+            'Std': cls_wise_std_vals
         }
 
         table = tabulate(tabular_data, headers='keys', tablefmt='pretty', numalign='left', stralign='left')
@@ -94,12 +113,14 @@ class ConceptDetector:
         with torch.no_grad():
             for i, batch in enumerate(data_loader):
                 img = batch['img'].to(device)
+                # labels: [[0, 3, ...], [1, 2, ...]]
+                # outer list denotes a batch of samples,
+                # inner list denotes class indices of objects present in each sample
+                labels = batch['labels']
                 _ = self.classifier(img)
 
                 feat_map = self._feat_maps[0]
                 num_samples, num_channels, feat_h, feat_w = feat_map.shape
-                if i == 0:
-                    self._num_channels = num_channels
 
                 feat_map = F.interpolate(feat_map, size=self.img_size, mode='bilinear')
                 # feat_map: (num_channels, num_samples, img_h, img_w)
@@ -124,7 +145,9 @@ class ConceptDetector:
                         contours, _ = cv2.findContours(mask_single_channel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                         num_concepts_single_sample += len(contours)
 
-                    self.num_concepts.append(num_concepts_single_sample)
+                    # the num_concepts_single_samples is shared by multiple labels of one single sample
+                    for label in labels:
+                        self.num_concepts_dict[label].append(num_concepts_single_sample)
                     if pbar is not None:
                         pbar.set_postfix({'num_concepts': num_concepts_single_sample})
                         pbar.refresh()
