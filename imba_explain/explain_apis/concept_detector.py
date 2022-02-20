@@ -139,14 +139,14 @@ class ConceptDetector:
                 binary_mask = binary_mask.numpy()
                 binary_mask = (binary_mask * 255.0).astype(np.uint8)
                 # mask_single_sample: (num_channels, img_h, img_w)
-                for mask_single_sample in binary_mask:
+                for mask_single_sample, labels_single_sample in zip(binary_mask, labels):
                     num_concepts_single_sample = 0
                     for mask_single_channel in mask_single_sample:
                         contours, _ = cv2.findContours(mask_single_channel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                         num_concepts_single_sample += len(contours)
 
                     # the num_concepts_single_samples is shared by multiple labels of one single sample
-                    for label in labels:
+                    for label in labels_single_sample:
                         self.num_concepts_dict[label].append(num_concepts_single_sample)
                     if pbar is not None:
                         pbar.set_postfix({'num_concepts': num_concepts_single_sample})
