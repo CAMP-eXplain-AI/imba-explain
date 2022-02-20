@@ -37,7 +37,7 @@ def count_concepts(cfg: mmcv.Config,
                    device: Union[str, torch.device] = 'cuda:0') -> None:
     logger = setup_logger('imba-explain')
 
-    explain_set = build_dataset(cfg.data['test'])
+    explain_set = build_dataset(cfg.data['explain'])
     data_loader_cfg = deepcopy(cfg.data['data_loader'])
     data_loader_cfg.update({'shuffle': False, 'drop_last': False})
     logger.info(f'Dataloader config: {data_loader_cfg}')

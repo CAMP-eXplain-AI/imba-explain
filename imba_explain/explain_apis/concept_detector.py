@@ -105,21 +105,29 @@ class ConceptDetector:
                 # feat_map: (num_channels, num_samples, img_h, img_w)
                 feat_map = torch.permute(feat_map, [1, 0, 2, 3])
                 # feat_map: (num_channels, num_samples * img_h * img_w)
-                feat_map = feat_map.reshape(num_channels, num_samples * self.img_size[0] * self.img_size[1])
+                feat_map = feat_map.reshape(num_channels, num_samples * self.img_size[0] * self.img_size[1]).cpu()
                 threshold = torch.quantile(feat_map, q=self.quantile_threshold, dim=1, keepdim=True)
                 assert threshold.shape == (num_channels, 1)
 
-                binary_mask = (feat_map >= threshold).astype(torch.float32)
+                binary_mask = (feat_map >= threshold).to(torch.float32)
                 binary_mask = binary_mask.reshape(num_channels, num_samples, self.img_size[0], self.img_size[1])
                 binary_mask = torch.permute(binary_mask, [1, 0, 2, 3])
                 assert binary_mask.shape == (num_samples, num_channels) + self.img_size
 
                 # binary_mask: (num_samples, num_channels, img_h, img_w)
-                binary_mask = binary_mask.cpu().numpy()
+                binary_mask = binary_mask.numpy()
                 binary_mask = (binary_mask * 255.0).astype(np.uint8)
-                for mask_single in binary_mask:
-                    contours, _ = cv2.findContours(mask_single, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                    self.num_concepts.append(len(contours))
+                # mask_single_sample: (num_channels, img_h, img_w)
+                for mask_single_sample in binary_mask:
+                    num_concepts_single_sample = 0
+                    for mask_single_channel in mask_single_sample:
+                        contours, _ = cv2.findContours(mask_single_channel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                        num_concepts_single_sample += len(contours)
+
+                    self.num_concepts.append(num_concepts_single_sample)
+                    if pbar is not None:
+                        pbar.set_postfix({'num_concepts': num_concepts_single_sample})
+                        pbar.refresh()
 
                 self.clear_feat_maps()
 
