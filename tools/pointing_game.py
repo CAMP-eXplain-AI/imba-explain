@@ -50,3 +50,12 @@ def run_pointing_game(attr_map_dir: str, bboxes_records: str, top_k: int = 1) ->
     num_pos = np.sum(num_pos_list)
     performance = num_true_pos / (num_pos + 1e-8)
     logger.info(f'Pointing game: True positive: {num_true_pos}; Positive: {num_pos}; Performance: {performance:.4f}')
+
+
+def main():
+    args = parse_args()
+    run_pointing_game(attr_map_dir=args.attr_map_dir, bboxes_records=args.bboxes_records, top_k=args.top_k)
+
+
+if __name__ == '__main__':
+    main()
