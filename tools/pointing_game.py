@@ -34,12 +34,12 @@ def run_pointing_game(attr_map_dir: str, bboxes_records: str, top_k: int = 1) ->
     sample_key = next(iter(bboxes_records.keys()))
     if sample_key.endswith('.npy'):
         img_reader_fn = np.load
-        file_ext = 'npy'
+        file_ext = '.npy'
     else:
         img_reader_fn = partial(cv2.imread, flags=cv2.IMREAD_UNCHANGED)
-        file_ext = 'png'
+        file_ext = '.png'
 
-    attr_map_paths = glob(osp.join(attr_map_dir, f'**/*.{file_ext}'), recursive=True)
+    attr_map_paths = glob(osp.join(attr_map_dir, f'**/*{file_ext}'), recursive=True)
     logger.info(f'There are {len(attr_map_paths)} attribution maps.')
 
     pg = PointingGame(top_k=top_k)
