@@ -31,14 +31,14 @@ def run_pointing_game(attr_map_dir: str, bboxes_records: str, top_k: int = 1) ->
     attr_map_paths = glob(osp.join(attr_map_dir, '**/*.png'), recursive=True)
     logger.info(f'There are {len(attr_map_paths)} attribution maps.')
 
+    logger.info(f'Loading bboxes records from {bboxes_records}.')
     bboxes_records: Dict[str, Dict[str, List]] = mmcv.load(bboxes_records)
-    logger.info(f'Bboxes records are loaded from {bboxes_records}.')
 
     pg = PointingGame(top_k=top_k)
 
     num_true_pos_list = []
     num_pos_list = []
-    for attr_map_path in tqdm(total=len(attr_map_paths)):
+    for attr_map_path in tqdm(attr_map_paths):
         attr_map = cv2.imread(attr_map_path, cv2.IMREAD_UNCHANGED)
         base_name = osp.basename(attr_map_path)
         bboxes = np.asarray(bboxes_records[base_name]['bboxes'])
