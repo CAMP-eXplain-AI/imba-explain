@@ -27,19 +27,22 @@ class BaseNormalizer(metaclass=ABCMeta):
         attr_map = (attr_map * 255).astype(np.uint8)
         return attr_map
 
-    def __call__(self, attr_map: np.ndarray, *args: Any, **kwargs: Any) -> np.ndarray:
+    def __call__(self, attr_map: np.ndarray, convert_to_img: bool = True, **kwargs: Any) -> np.ndarray:
         """First normalize the attribution map, and then convert it to a single-channel 8-bit image.
 
         Args:
             attr_map: Attribution map with shape (height, width).
-            args: Other arguments of the `normalize` function.
-            kwargs: Other keyword arguments of the `normalize` function.
+            kwargs: Other keyword arguments of the `normalize` function. It can contain
 
         Returns:
-            The attribution map as a single-channel 8-bit image.
+            If convert_to_img: the attribution map as a single-channel 8-bit image.
+            Else: the attribution map as a 2-D ndarray with float dtype.
         """
         attr_map = self.normalize(attr_map)
-        return self.to_img(attr_map)
+        if convert_to_img:
+            return self.to_img(attr_map)
+        else:
+            return attr_map
 
 
 @NORMALIZERS.register_module()

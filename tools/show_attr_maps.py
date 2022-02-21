@@ -12,6 +12,11 @@ def parse_args():
     parser.add_argument('ckpt', help='Path to a checkpoint file.')
     parser.add_argument('--work-dir', default='workdirs/', help='Directory in which the output files will be stored.')
     parser.add_argument(
+        '--as-npy',
+        action='store_true',
+        help='Whether to disable converting the attribution maps to images. If True, store the'
+        'attribution maps as npy files, and force with_color and plot_bboxes to False.')
+    parser.add_argument(
         '--with-color',
         action='store_true',
         help='Whether to apply colormap. When plot_bboxes is True, this argument is forced to be True.')
@@ -50,6 +55,7 @@ def main():
     show_attr_maps(
         cfg,
         ckpt=args.ckpt,
+        as_npy=args.as_npy,
         with_color=args.with_color,
         save_bboxes=args.save_bboxes,
         plot_bboxes=args.plot_bboxes,

@@ -31,11 +31,20 @@ class BaseAttribution(metaclass=ABCMeta):
     def attribute(self, img: Tensor, label: Union[int, Tensor, np.ndarray], *args: Any, **kwargs: Any) -> np.ndarray:
         pass
 
-    def attribute_and_normalize(self, img: Tensor, label: Union[int, Tensor, np.ndarray], *args: Any,
+    def attribute_and_normalize(self,
+                                img: Tensor,
+                                label: Union[int, Tensor, np.ndarray],
+                                *args: Any,
+                                convert_to_img: bool = True,
                                 **kwargs: Any) -> np.ndarray:
         attr_map = self.attribute(img, label, *args, **kwargs)
-        # normalize the attribution map and convert it to an image
-        return self.attr_normalizer(attr_map)
+        # normalize the attribution map and convert it to an image if convert_to_img is True
+        return self.attr_normalizer(attr_map, convert_to_img=convert_to_img)
 
-    def __call__(self, img: Tensor, label: Union[int, Tensor, np.ndarray], *args: Any, **kwargs: Any) -> np.ndarray:
-        return self.attribute_and_normalize(img, label, *args, **kwargs)
+    def __call__(self,
+                 img: Tensor,
+                 label: Union[int, Tensor, np.ndarray],
+                 *args: Any,
+                 convert_to_img: bool = True,
+                 **kwargs: Any) -> np.ndarray:
+        return self.attribute_and_normalize(img, label, *args, convert_to_img=convert_to_img, **kwargs)

@@ -19,6 +19,7 @@ from .builder import build_attributions
 
 def show_attr_maps(cfg: Config,
                    ckpt: str,
+                   as_npy: bool = False,
                    with_color: bool = False,
                    plot_bboxes: bool = True,
                    save_bboxes: bool = False,
@@ -27,9 +28,15 @@ def show_attr_maps(cfg: Config,
                    with_pbar: bool = True) -> None:
     manual_seed(cfg.get('seed', 2022))
     logger = setup_logger('imba-explain')
+    if as_npy:
+        if with_color or plot_bboxes:
+            logger.info("When 'as_npy' is True, 'with_color' and 'plot_bboxes' are forced to be False.")
+            with_color = False
+            plot_bboxes = False
+
     if plot_bboxes:
         if not with_color:
-            logger.info('When plot_bboxes is True, with_color is forced to be True.')
+            logger.info("When 'plot_bboxes' is True, 'with_color' is forced to be True.")
             with_color = True
 
     explain_set = build_dataset(cfg.data['explain'])
@@ -76,7 +83,7 @@ def show_attr_maps(cfg: Config,
 
             unique_labels = np.unique(labels)
             for i, label in enumerate(unique_labels):
-                attr_map = attribution_method(img, int(label))
+                attr_map = attribution_method(img, int(label), convert_to_img=not as_npy)
                 attr_map = cv2.resize(attr_map, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
                 if with_color:
                     # attr_map is in BGR mode.
@@ -91,13 +98,19 @@ def show_attr_maps(cfg: Config,
 
                 img_name = osp.splitext(osp.basename(img_file))[0]
                 suffix = '' if i == 0 else f'-{i + 1}'
-                out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.png') if single_folder else osp.join(
-                    cfg.work_dir, ind_to_name[label], f'{img_name}{suffix}.png')
-                cv2.imwrite(out_path, attr_map)
+                file_ext = 'npy' if as_npy else 'png'
+                out_base_name = f'{img_name}{suffix}.{file_ext}'
+                out_path = osp.join(cfg.work_dir, out_base_name) if single_folder else osp.join(
+                    cfg.work_dir, ind_to_name[label], out_base_name)
+
+                if as_npy:
+                    np.save(out_path, attr_map)
+                else:
+                    cv2.imwrite(out_path, attr_map)
 
                 if save_bboxes:
                     to_record = {'bboxes': bboxes_to_draw.tolist(), 'labels': labels_to_draw.tolist()}
-                    bboxes_records.update({f'{img_name}{suffix}.png': to_record})
+                    bboxes_records.update({out_base_name: to_record})
 
             if pbar is not None:
                 pbar.update(1)
