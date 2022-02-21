@@ -5,6 +5,7 @@ from .builder import ATTRIBUTIONS, NORMALIZERS, build_attributions, build_normal
 from .concept_detector import ConceptDetector
 from .extremal_perturbation import ExtremalPerturbation
 from .gradcam import GradCAM
+from .pointing_game import PointingGame
 from .show_attr_maps import show_attr_maps
 
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     'IdentityNormalizer',
     'ScaleNormalizer',
     'MinMaxNormalizer',
+    'PointingGame',
     'build_normalizer',
     'build_attributions',
 ]

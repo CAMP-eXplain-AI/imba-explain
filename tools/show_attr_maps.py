@@ -12,6 +12,14 @@ def parse_args():
     parser.add_argument('ckpt', help='Path to a checkpoint file.')
     parser.add_argument('--work-dir', default='workdirs/', help='Directory in which the output files will be stored.')
     parser.add_argument(
+        '--with-color',
+        action='store_true',
+        help='Whether to apply colormap. When plot_bboxes is True, this argument is forced to be True.')
+    parser.add_argument(
+        '--save-bboxes',
+        action='store_true',
+        help='Whether save the bounding boxes of attribution maps to a json file.')
+    parser.add_argument(
         '--plot-bboxes', action='store_true', help='Whether to plot bounding boxes on the attribution maps.')
     parser.add_argument(
         '--single-folder', action='store_true', help='Whether to save all the attribution maps in a single folder.')
@@ -42,6 +50,8 @@ def main():
     show_attr_maps(
         cfg,
         ckpt=args.ckpt,
+        with_color=args.with_color,
+        save_bboxes=args.save_bboxes,
         plot_bboxes=args.plot_bboxes,
         single_folder=args.single_folder,
         device=device,

@@ -19,12 +19,18 @@ from .builder import build_attributions
 
 def show_attr_maps(cfg: Config,
                    ckpt: str,
+                   with_color: bool = False,
                    plot_bboxes: bool = True,
+                   save_bboxes: bool = False,
                    single_folder: bool = True,
                    device: Union[str, torch.device] = 'cuda:0',
                    with_pbar: bool = True) -> None:
     manual_seed(cfg.get('seed', 2022))
     logger = setup_logger('imba-explain')
+    if plot_bboxes:
+        if not with_color:
+            logger.info('When plot_bboxes is True, with_color is forced to be True.')
+            with_color = True
 
     explain_set = build_dataset(cfg.data['explain'])
     logger.info(f'Dataset under: {explain_set.img_root} contains {len(explain_set)} images')
@@ -49,6 +55,7 @@ def show_attr_maps(cfg: Config,
     attribution_method.set_classifier(classifier)
 
     pbar = tqdm(total=len(explain_set)) if with_pbar else None
+    bboxes_records = dict() if save_bboxes else None
 
     for batch in explain_loader:
         imgs = batch['img'].to(device)
@@ -71,24 +78,34 @@ def show_attr_maps(cfg: Config,
             for i, label in enumerate(unique_labels):
                 attr_map = attribution_method(img, int(label))
                 attr_map = cv2.resize(attr_map, dsize=(width, height), interpolation=cv2.INTER_LINEAR)
-                # attr_map is in BGR mode.
-                attr_map = cv2.applyColorMap(attr_map, cv2.COLORMAP_VIRIDIS)
+                if with_color:
+                    # attr_map is in BGR mode.
+                    attr_map = cv2.applyColorMap(attr_map, cv2.COLORMAP_VIRIDIS)
 
+                bboxes_to_draw = bboxes[labels == label]
+                labels_to_draw = labels[labels == label]
                 if plot_bboxes:
-                    bboxes_to_draw = bboxes[labels == label]
-                    labels_to_draw = labels[labels == label]
-                    labels_to_draw = [f'{ind_to_name[i]}: {pred[i]:.2f}' for i in labels_to_draw]
+                    label_texts = [f'{ind_to_name[i]}: {pred[i]:.2f}' for i in labels_to_draw]
                     attr_map = draw_multiple_rectangles(attr_map, bboxes_to_draw, **cfg.bbox_cfg)
-                    attr_map = add_multiple_labels(attr_map, labels_to_draw, bboxes_to_draw, **cfg.bbox_label_cfg)
+                    attr_map = add_multiple_labels(attr_map, label_texts, bboxes_to_draw, **cfg.bbox_label_cfg)
 
                 img_name = osp.splitext(osp.basename(img_file))[0]
                 suffix = '' if i == 0 else f'-{i + 1}'
-                out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.jpg') if single_folder else osp.join(
-                    cfg.work_dir, ind_to_name[label], f'{img_name}{suffix}.jpg')
+                out_path = osp.join(cfg.work_dir, f'{img_name}{suffix}.png') if single_folder else osp.join(
+                    cfg.work_dir, ind_to_name[label], f'{img_name}{suffix}.png')
                 cv2.imwrite(out_path, attr_map)
+
+                if save_bboxes:
+                    to_record = {'bboxes': bboxes_to_draw.tolist(), 'labels': labels_to_draw.tolist()}
+                    bboxes_records.update({f'{img_name}{suffix}.png': to_record})
 
             if pbar is not None:
                 pbar.update(1)
 
     if pbar is not None:
         pbar.close()
+
+    if save_bboxes:
+        out_path = osp.join(cfg.work_dir, 'bboxes_records.json')
+        mmcv.dump(bboxes_records, out_path)
+        logger.info(f'Bboxes records have been saved to {out_path}.')
