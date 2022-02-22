@@ -1,11 +1,9 @@
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 
 
-def bboxes_to_mask(bboxes: List[np.ndarray],
-                   shape: Tuple[int, int],
-                   dtype: Union[str, np.dtype] = np.bool) -> np.ndarray:
+def bboxes_to_mask(bboxes: List[np.ndarray], shape: Tuple[int, int], dtype: Union[Any] = np.bool) -> np.ndarray:
     binary_mask = np.zeros(shape, dtype=dtype)
     for bbox in bboxes:
         x1, y1, x2, y2 = bbox

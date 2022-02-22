@@ -15,11 +15,15 @@ from torch.utils.hooks import RemovableHandle
 from tqdm import tqdm
 
 from ..classifiers import get_module
+from .pointing_game import bboxes_to_mask
 
 
 class ConceptDetector:
 
-    def __init__(self, img_size: Union[int, Tuple[int, int]] = 224, quantile_threshold: float = 0.99) -> None:
+    def __init__(self,
+                 img_size: Union[int, Tuple[int, int]] = 224,
+                 quantile_threshold: float = 0.99,
+                 with_bboxes: bool = False) -> None:
         self.classifier: Optional[nn.Module] = None
         self.hook_handle: Optional[RemovableHandle] = None
 
@@ -33,6 +37,7 @@ class ConceptDetector:
             raise ValueError(f'Invalid img_size: {img_size}.')
         self.img_size: Tuple[int, int] = img_size
         self.quantile_threshold = quantile_threshold
+        self.with_bboxes = with_bboxes
         # map class indices to a list of integers,
         # each integer represents the number of concepts in a single sample
         self.num_concepts_dict = defaultdict(list)
@@ -117,6 +122,13 @@ class ConceptDetector:
                 # outer list denotes a batch of samples,
                 # inner list denotes class indices of objects present in each sample
                 labels = batch['labels']
+                if self.with_bboxes:
+                    if 'bboxes' not in batch:
+                        raise KeyError("When 'self.with_bboxes' is True, 'bboxes' should be in the data batch.")
+                    bboxes = batch['bboxes']
+                else:
+                    bboxes = None
+
                 _ = self.classifier(img)
 
                 feat_map = self._feat_maps[0]
@@ -138,6 +150,10 @@ class ConceptDetector:
                 # binary_mask: (num_samples, num_channels, img_h, img_w)
                 binary_mask = binary_mask.numpy()
                 binary_mask = (binary_mask * 255.0).astype(np.uint8)
+                if bboxes is not None:
+                    bboxes_binary_mask = bboxes_to_mask(bboxes, shape=binary_mask.shape, dtype=np.uint8)
+                    binary_mask *= bboxes_binary_mask
+
                 # mask_single_sample: (num_channels, img_h, img_w)
                 for mask_single_sample, labels_single_sample in zip(binary_mask, labels):
                     num_concepts_single_sample = 0
