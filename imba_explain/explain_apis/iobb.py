@@ -8,7 +8,7 @@ from .pointing_game import bboxes_to_mask
 class IoBB:
 
     def __init__(self, attr_threshold: Optional[float] = None) -> None:
-        if attr_threshold >= 1.0 or attr_threshold <= 0.0:
+        if attr_threshold is not None and attr_threshold >= 1.0 or attr_threshold <= 0.0:
             raise ValueError(f"'attr_threshold' should be in range (0, 1), but got {attr_threshold}")
         self.attr_threshold = attr_threshold
 
