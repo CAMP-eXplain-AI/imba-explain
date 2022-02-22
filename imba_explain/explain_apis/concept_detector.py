@@ -125,7 +125,8 @@ class ConceptDetector:
                 if self.with_bboxes:
                     if 'bboxes' not in batch:
                         raise KeyError("When 'self.with_bboxes' is True, 'bboxes' should be in the data batch.")
-                    bboxes = batch['bboxes']
+                    # bboxes in a batch data is a list, where each element is a 2-D ndarray
+                    bboxes: List[np.ndarray] = batch['bboxes']
                 else:
                     bboxes = None
 
@@ -151,7 +152,10 @@ class ConceptDetector:
                 binary_mask = binary_mask.numpy()
                 binary_mask = (binary_mask * 255.0).astype(np.uint8)
                 if bboxes is not None:
-                    bboxes_binary_mask = bboxes_to_mask(bboxes, shape=binary_mask.shape, dtype=np.uint8)
+                    # convert bboxes for each sample into a 2-D binary mask, and concatenate them,
+                    # the concatenated bboxes_binary_mask has shape: (num_samples, 1, img_h, img_w)
+                    bboxes_binary_mask = [bboxes_to_mask(b, shape=self.img_size, dtype=np.uint8) for b in bboxes]
+                    bboxes_binary_mask = np.stack(bboxes_binary_mask)[:, None, :, :]
                     binary_mask *= bboxes_binary_mask
 
                 # mask_single_sample: (num_channels, img_h, img_w)

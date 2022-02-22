@@ -1,9 +1,9 @@
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Sequence, Tuple, Union
 
 import numpy as np
 
 
-def bboxes_to_mask(bboxes: List[np.ndarray], shape: Tuple[int, int], dtype: Union[Any] = np.bool) -> np.ndarray:
+def bboxes_to_mask(bboxes: Sequence[np.ndarray], shape: Tuple[int, int], dtype: Union[Any] = np.bool) -> np.ndarray:
     binary_mask = np.zeros(shape, dtype=dtype)
     for bbox in bboxes:
         x1, y1, x2, y2 = bbox
@@ -17,7 +17,7 @@ class PointingGame:
     def __init__(self, top_k: int = 1) -> None:
         self.top_k = top_k
 
-    def evaluate(self, attr_map: np.ndarray, bboxes: List[np.ndarray]) -> Dict[str, float]:
+    def evaluate(self, attr_map: np.ndarray, bboxes: Sequence[np.ndarray]) -> Dict[str, float]:
         if len(attr_map.shape) != 2:
             raise ValueError(f'attribution map should be in shape (height, width), but got {attr_map.shape}')
 
