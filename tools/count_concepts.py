@@ -53,8 +53,7 @@ def count_concepts(cfg: mmcv.Config,
     classifier.to(device)
     classifier.eval()
 
-    concept_detector = ConceptDetector(
-        cfg.img_size, quantile_threshold=cfg.quantile_threshold, with_bboxes=cfg.with_bboxes)
+    concept_detector = ConceptDetector(**cfg.concept_detector_cfg)
 
     concept_detector.set_classifier(classifier, target_layer=cfg.target_layer)
     concept_detector.detect(explain_loader, device=device, with_pbar=with_pbar)

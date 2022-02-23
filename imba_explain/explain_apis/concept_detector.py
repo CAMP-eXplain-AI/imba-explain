@@ -23,7 +23,8 @@ class ConceptDetector:
     def __init__(self,
                  img_size: Union[int, Tuple[int, int]] = 224,
                  quantile_threshold: float = 0.99,
-                 with_bboxes: bool = False) -> None:
+                 with_bboxes: bool = False,
+                 count_disjoint: bool = False) -> None:
         self.classifier: Optional[nn.Module] = None
         self.hook_handle: Optional[RemovableHandle] = None
 
@@ -38,6 +39,7 @@ class ConceptDetector:
         self.img_size: Tuple[int, int] = img_size
         self.quantile_threshold = quantile_threshold
         self.with_bboxes = with_bboxes
+        self.count_disjoint = count_disjoint
         # map class indices to a list of integers,
         # each integer represents the number of concepts in a single sample
         self.num_concepts_dict = defaultdict(list)
@@ -163,7 +165,10 @@ class ConceptDetector:
                     num_concepts_single_sample = 0
                     for mask_single_channel in mask_single_sample:
                         contours, _ = cv2.findContours(mask_single_channel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                        num_concepts_single_sample += len(contours)
+                        if self.count_disjoint:
+                            num_concepts_single_sample += len(contours)
+                        else:
+                            num_concepts_single_sample += (len(contours) > 0)
 
                     # the num_concepts_single_samples is shared by multiple labels of one single sample
                     for label in labels_single_sample:

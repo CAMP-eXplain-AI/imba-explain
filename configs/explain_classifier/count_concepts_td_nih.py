@@ -6,4 +6,4 @@ _base_ = [
 # Discard train and val datasets
 data = dict(data_loader=dict(batch_size=128, shuffle=False))
 
-target_layer = 'features.norm5'
+concept_detector_cfg = dict(target_layer='features.norm5')
