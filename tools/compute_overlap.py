@@ -57,7 +57,7 @@ def run_overlap(attr_map_dir: str,
 
     overlap_mean = np.mean(overlap_list)
     overlap_std = np.std(overlap_list)
-    logger.info(f'IoBB: mean: {overlap_mean:.4f}; std: {overlap_std:.4f}')
+    logger.info(f'{mode.swapcase()}: mean: {overlap_mean:.4f}; std: {overlap_std:.4f}')
 
 
 def main():
