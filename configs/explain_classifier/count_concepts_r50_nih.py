@@ -5,4 +5,4 @@ _base_ = [
 
 # Discard train and val datasets
 data = dict(data_loader=dict(batch_size=64, shuffle=False))
-quantile_threshold = 0.97
+quantile_threshold = 0.96

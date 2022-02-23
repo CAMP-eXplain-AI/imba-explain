@@ -5,11 +5,15 @@ import numpy as np
 from .pointing_game import bboxes_to_mask
 
 
-class IoBB:
+class Overlap:
 
-    def __init__(self, attr_threshold: Optional[float] = None) -> None:
+    def __init__(self, mode: str = 'iobb', attr_threshold: Optional[float] = None) -> None:
+        if mode.lower() not in ('iobb', 'ior', 'iou'):
+            raise ValueError(f"mode should be in ('iobb', 'ior'), but got {mode}")
         if attr_threshold is not None and (attr_threshold >= 1.0 or attr_threshold <= 0.0):
             raise ValueError(f"'attr_threshold' should be in range (0, 1), but got {attr_threshold}")
+
+        self.mode = mode
         self.attr_threshold = attr_threshold
 
     def evaluate(self, attr_map: np.ndarray, bboxes: Sequence[np.ndarray]) -> float:
@@ -24,6 +28,12 @@ class IoBB:
             attr_map = (attr_map >= self.attr_threshold).astype(gt_mask.dtype)
 
         inter = (gt_mask * attr_map).sum()
-        bb = gt_mask.sum()
-        iobb = inter / (bb + 1e-8)
-        return iobb
+        if self.mode == 'iobb':
+            iobb = inter / (gt_mask.sum() + 1e-8)
+            return iobb
+        elif self.mode == 'ior':
+            ior = inter / (attr_map.sum() + 1e-8)
+            return ior
+        else:
+            iou = inter / (gt_mask.sum() + attr_map.sum() - inter + 1e-8)
+            return iou
