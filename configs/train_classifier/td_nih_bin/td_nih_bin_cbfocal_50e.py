@@ -4,3 +4,4 @@ _base_ = [
 ]
 
 classifier = dict(num_classes=1)
+class_metrics = dict(accuracy=dict(is_multilabel=False))
