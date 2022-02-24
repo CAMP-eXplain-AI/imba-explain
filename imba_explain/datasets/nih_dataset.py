@@ -1,6 +1,6 @@
 import os
 import os.path as osp
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import albumentations as A
 import cv2
@@ -82,6 +82,52 @@ class NIHClassificationDataset(ClassificationDataset):
         diseases = self.img_to_diseases[img_file]
         one_hot_label = self.one_hot_encode(self.name_to_ind, diseases)
         result.update({'target': one_hot_label})
+
+        return result
+
+
+@DATASETS.register_module()
+class NIHBinaryClassificationDataset(ClassificationDataset):
+    name_to_ind = {'No Finding': 0}
+
+    def __init__(self, img_root: str, label_csv: str, pipeline: List[Dict], clip_ratio: Optional[float] = None) -> None:
+        super().__init__(pipeline=pipeline, clip_ratio=clip_ratio)
+
+        self.img_root = img_root
+        self.label_csv = label_csv
+
+        label_df = pd.read_csv(self.label_csv)
+        label_df.set_index('Image Index', inplace=True)
+
+        self.num_pos_neg = torch.zeros((2, self._num_classes), dtype=torch.long)
+        # img_file to disease names. E.g., 0001_0000.png -> 0 (No finding) or 1 (others)
+        self.img_to_label = {}
+        all_img_files = os.listdir(self.img_root)
+
+        self.samples: List[Tuple[str, int]] = []
+        for img_file in all_img_files:
+            diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
+            if 'No Finding' in diseases:
+                self.samples.append((img_file, self.name_to_ind['No Finding']))
+                # 'No Finding' is positive class and others are negative classes
+                self.num_pos_neg[0] += 1
+            else:
+                self.samples.append((img_file, 1 - self.name_to_ind['No Finding']))
+
+        self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
+        self.log_data_dist_info(class_names=self._class_names)
+
+    def get_num_pos_neg(self) -> torch.Tensor:
+        return self.num_pos_neg
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> Dict[str, Union[Tensor, str]]:
+        img_file, target = self.samples[idx]
+        img = cv2.cvtColor(cv2.imread(osp.join(self.img_root, img_file)), cv2.COLOR_BGR2RGB)
+        img = self.pipeline(image=img)['image']
+        result = {'img': img, 'img_file': img_file, 'target': torch.tensor(target, dtype=torch.float32)}
 
         return result
 
