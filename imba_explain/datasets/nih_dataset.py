@@ -114,7 +114,7 @@ class NIHBinaryClassificationDataset(ClassificationDataset):
             else:
                 self.samples.append((img_file, 1 - self.name_to_ind['No Finding']))
 
-        self.num_pos_neg[1] = len(self.img_files) - self.num_pos_neg[0]
+        self.num_pos_neg[1] = len(self.samples) - self.num_pos_neg[0]
         self.log_data_dist_info(class_names=self._class_names)
 
     def get_num_pos_neg(self) -> torch.Tensor:
