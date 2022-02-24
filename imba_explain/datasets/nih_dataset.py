@@ -127,7 +127,7 @@ class NIHBinaryClassificationDataset(ClassificationDataset):
         img_file, target = self.samples[idx]
         img = cv2.cvtColor(cv2.imread(osp.join(self.img_root, img_file)), cv2.COLOR_BGR2RGB)
         img = self.pipeline(image=img)['image']
-        result = {'img': img, 'img_file': img_file, 'target': torch.tensor(target, dtype=torch.float32)}
+        result = {'img': img, 'img_file': img_file, 'target': torch.tensor([target], dtype=torch.float32)}
 
         return result
 
