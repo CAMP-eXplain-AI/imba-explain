@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from .builder import LOSSES
-from .utils import convert_to_one_hot, weight_reduce_loss
+from .utils import weight_reduce_loss
 
 
 def sigmoid_focal_loss(pred: Tensor,
@@ -79,7 +79,7 @@ class FocalLoss(nn.Module):
         Args:
             pred (torch.Tensor): The prediction with shape (N, \*).
             target (torch.Tensor): The ground truth label of the prediction
-                with shape (N, \*), N or (N,1).
+                with shape (N, \*), N or (N,1). Note that the target must be one-hot encoded
             weight (torch.Tensor, optional): Sample-wise loss weight with shape
                 (N, \*). Defaults to None.
             avg_factor (int, optional): Average factor that is used to average
@@ -92,8 +92,6 @@ class FocalLoss(nn.Module):
         """
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (reduction_override if reduction_override else self.reduction)
-        if target.dim() == 1 or (target.dim() == 2 and target.shape[1] == 1):
-            target = convert_to_one_hot(target.view(-1, 1), pred.shape[-1])
         loss_cls = self.loss_weight * sigmoid_focal_loss(
             pred, target, weight, gamma=self.gamma, alpha=self.alpha, reduction=reduction, avg_factor=avg_factor)
         return loss_cls
