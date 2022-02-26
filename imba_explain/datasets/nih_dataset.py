@@ -88,7 +88,9 @@ class NIHClassificationDataset(ClassificationDataset):
 
 @DATASETS.register_module()
 class NIHBinaryClassificationDataset(ClassificationDataset):
-    name_to_ind = {'No Finding': 0}
+    # the index only indicates the colum index in the output/target (shape: (batch_size, num_classes)),
+    # but not the positive target value
+    name_to_ind = {'Pathology': 0}
 
     def __init__(self, img_root: str, label_csv: str, pipeline: List[Dict], clip_ratio: Optional[float] = None) -> None:
         super().__init__(pipeline=pipeline, clip_ratio=clip_ratio)
@@ -107,12 +109,12 @@ class NIHBinaryClassificationDataset(ClassificationDataset):
         self.samples: List[Tuple[str, int]] = []
         for img_file in all_img_files:
             diseases = label_df.loc[img_file, 'Finding Labels'].split('|')
-            if 'No Finding' in diseases:
-                self.samples.append((img_file, self.name_to_ind['No Finding']))
-                # 'No Finding' is positive class and others are negative classes
+            if 'No Finding' not in diseases:
+                self.samples.append((img_file, 1))
+                # 'Pathology' is positive class and 'No Finding' is negative class.
                 self.num_pos_neg[0] += 1
             else:
-                self.samples.append((img_file, 1 - self.name_to_ind['No Finding']))
+                self.samples.append((img_file, 0))
 
         self.num_pos_neg[1] = len(self.samples) - self.num_pos_neg[0]
         self.log_data_dist_info(class_names=self._class_names)
