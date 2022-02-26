@@ -90,7 +90,7 @@ class NIHClassificationDataset(ClassificationDataset):
 class NIHBinaryClassificationDataset(ClassificationDataset):
     # the index only indicates the colum index in the output/target (shape: (batch_size, num_classes)),
     # but not the positive target value
-    name_to_ind = {'Pathology': 0}
+    name_to_ind = {'Unhealthy': 0}
 
     def __init__(self, img_root: str, label_csv: str, pipeline: List[Dict], clip_ratio: Optional[float] = None) -> None:
         super().__init__(pipeline=pipeline, clip_ratio=clip_ratio)
@@ -159,6 +159,54 @@ class NIHDetectionDataset(Dataset):
         self.xml_files = os.listdir(self.annot_root)
 
         self.ind_to_name = {v: k for k, v in self.nih_bbox_name_to_ind.items()}
+
+    def get_ind_to_name(self) -> Dict[int, str]:
+        return self.ind_to_name
+
+    def __len__(self) -> int:
+        return len(self.xml_files)
+
+    def __getitem__(self, idx: int) -> Dict:
+        # base xml file name, e.g., xxxx_xxxx.xml
+        xml_file = self.xml_files[idx]
+        img_path = osp.join(self.img_root, osp.splitext(xml_file)[0] + '.png')
+        img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+        bboxes, labels = load_bbox_annot(osp.join(self.annot_root, xml_file), self.nih_bbox_name_to_ind, dtype='float')
+        transformed = self.pipeline(image=img, bboxes=bboxes, labels=labels)
+        img = transformed['image']
+        bboxes = np.asarray(transformed['bboxes'], dtype=int)
+        labels = np.asarray(transformed['labels'], dtype=int)
+        return {'img_file': osp.basename(img_path), 'img': img, 'bboxes': bboxes, 'labels': labels}
+
+
+@DATASETS.register_module()
+class NIHBinaryDetectionDataset(Dataset):
+    # the binary classifier's output has shape (batch_size, 1), and all the pathologies are labeled as positive
+    # so map all the pathologies to index 0.
+    # nih_bbox_name_to_ind is used for mapping the class labels from xml files to index in the classifier's output
+    nih_bbox_name_to_ind = {
+        'Atelectasis': 0,
+        'Cardiomegaly': 0,
+        'Effusion': 0,
+        'Infiltrate': 0,
+        'Mass': 0,
+        'Nodule': 0,
+        'Pneumonia': 0,
+        'Pneumothorax': 0
+    }
+
+    # ind_to_name is used for showing the labels on the top of bboxes.
+    ind_to_name = {0: 'Unhealthy'}
+
+    def __init__(self, img_root: str, annot_root: str, pipeline: List[Dict]) -> None:
+        super().__init__()
+        self.img_root = img_root
+        self.annot_root = annot_root
+
+        default_args = {'bbox_params': A.BboxParams(format='pascal_voc', label_fields=['labels'])}
+        self.pipeline = build_pipeline(pipeline, default_args=default_args)
+
+        self.xml_files = os.listdir(self.annot_root)
 
     def get_ind_to_name(self) -> Dict[int, str]:
         return self.ind_to_name
