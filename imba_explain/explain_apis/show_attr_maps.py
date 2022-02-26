@@ -70,10 +70,7 @@ def show_attr_maps(cfg: Config,
         bboxes_batch = batch['bboxes']
         labels_batch = batch['labels']
 
-        with torch.no_grad():
-            preds = classifier(imgs).sigmoid().cpu().numpy()
-
-        for img, img_file, bboxes, labels, pred in zip(imgs, img_files, bboxes_batch, labels_batch, preds):
+        for img, img_file, bboxes, labels in zip(imgs, img_files, bboxes_batch, labels_batch):
             img = img.unsqueeze(0)
             height, width = img.shape[2], img.shape[3]
             bboxes = bboxes.astype(int)
@@ -92,7 +89,7 @@ def show_attr_maps(cfg: Config,
                 bboxes_to_draw = bboxes[labels == label]
                 labels_to_draw = labels[labels == label]
                 if plot_bboxes:
-                    label_texts = [f'{ind_to_name[i]}: {pred[i]:.2f}' for i in labels_to_draw]
+                    label_texts = [f'{ind_to_name[i]}' for i in labels_to_draw]
                     attr_map = draw_multiple_rectangles(attr_map, bboxes_to_draw, **cfg.bbox_cfg)
                     attr_map = add_multiple_labels(attr_map, label_texts, bboxes_to_draw, **cfg.bbox_label_cfg)
 
