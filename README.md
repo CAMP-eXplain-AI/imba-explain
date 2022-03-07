@@ -1,1 +1,1 @@
-Explanation of Model trained on Imbalanced Datasets
+Explanation of Models Trained on Imbalanced Datasets
